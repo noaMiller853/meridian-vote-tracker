@@ -13,6 +13,7 @@ Add a row whenever something is rejected, fixed or changed. It is hard to recons
 | Planning | Proposed a standalone data-profiling script before writing code | Dropped it and started from the schema | The import report already gives the same information for any file |
 | Planning | Put the full table list inside DECISIONS.md | Moved it to docs/DATABASE.md | DECISIONS.md is limited to about two pages |
 | Planning | Proposed ignoring the whole data_candidate folder in Git | Ignore only the 100 MB historic file | docker compose needs the member states file to seed the database |
+| Planning | Said a different country name for the same code should "just update the name" | Questioned it: the spec only says it is not a conflict. Proposed ignoring incoming names; `countries.name` comes from the seed, the received name stays in `import_rows` | Updating names is not required, and a data file should not silently overwrite reference data |
 | Schema | Proposed a full unique index on conflicts (target, proposed value) | Made it partial: `WHERE status = 'Pending'` | A decided conflict must not block a later real change (Y -> A -> Y -> A) |
 | Schema | Proposed `published_at` on `votes` | Put it on `imports` (file level); per-row values stay in `import_rows` | It describes the export file, not the vote |
 | Schema | Proposed snapshot statuses Draft / Published / Unpublished | Calculating / Saved / Failed / Published; un-publish returns to Saved with an audit event; quarter nullable until published | Matches the background calculation and avoids an extra state |
