@@ -31,14 +31,17 @@ Status legend: **Decided** = agreed. **Proposed** = to confirm. **Open** = needs
 ## 6. Database and history design (Proposed)
 - PostgreSQL with EF Core and Npgsql, schema managed by migrations, bulk `COPY` for large files.
 - Approved data lives in `votes`, `country_votes` and `vote_positions`. Every approved row keeps its source import and row.
-- Conflicts have their own table. A decision is one conditional `UPDATE ... WHERE status = 'Pending'`, so only one decision is accepted. A unique key on (target, proposed value) prevents reopening.
+- Conflicts have their own table. A decision is one conditional `UPDATE ... WHERE status = 'Pending'`, so only one decision is accepted. A partial unique index on (target, proposed value) `WHERE status = 'Pending'` prevents a duplicate open conflict. It is partial on purpose: a decided conflict must not block a later real change of the same value (Y -> A -> Y -> A). Allowed vote-field targets: `session`, `vote_date`, `title`.
+- `published_at` is stored per file on `imports` (shown in the import report and conflict cards); per-row values stay in `import_rows`.
+- The position column is `desired_outcome` (avoids the SQL keyword `position`).
+- Snapshot status: Calculating / Saved / Failed / Published. `quarter` is set when publishing (CHECK: a Published snapshot has a quarter). Un-publishing returns the snapshot to Saved and writes an audit event.
 - Snapshots keep frozen copies (votes with position and weight, scores, per-vote contributions), so later corrections never change a saved snapshot.
 - Full table list, relationships and constraints: `docs/DATABASE.md`.
 
 ## Open
 - Date format: the spec says `dd-mm-yyyy` (ING-04) but Appendix A and the real file use `yyyy-mm-dd`. Proposal: accept ISO only, reject anything else.
 - Rejected conflict and re-upload of the same corrected file: proposal is to keep it closed.
-- Publishing a second snapshot for the same quarter: proposal is to require an explicit un-publish first (audited).
+- Publishing a second snapshot for the same quarter: requires un-publishing the first (back to Saved, audited); enforced by a partial unique index.
 - PDF bonus: decide at the end of day 2 based on progress.
 
 ## To write before submitting

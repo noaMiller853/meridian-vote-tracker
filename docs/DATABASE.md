@@ -1,22 +1,22 @@
 # Database schema
 
-PostgreSQL, accessed with EF Core and Npgsql. Schema managed by migrations. Large imports use bulk `COPY`.
+PostgreSQL, accessed with EF Core and Npgsql. Schema managed by migrations (`src/Meridian.Infrastructure/Persistence/Migrations`), snake_case names. Large imports use bulk `COPY`.
 
 | Area | Table | Key columns / notes |
 |---|---|---|
-| Reference | `countries` | `country_code` PK, `name` |
+| Reference | `countries` | `country_code` PK (three upper-case letters), `name` |
 | | `country_memberships` | `country_code` FK, `member_from`, `member_to` (null = still a member). Exclusion constraint: no overlapping periods per country |
-| | `users` | `id`, `name`, `role` (Analyst / Admin) |
-| Ingestion | `background_jobs` | `type`, `status`, `done`, `total`, `error`, `correlation_id`. Used by imports and snapshots |
-| | `imports` | file name, storage URI, sha256, `uploaded_by`, `uploaded_at`, counts per classification, report. The seed load is also an import by `system` |
-| | `import_rows` | `import_id` FK, `row_number`, raw line, parsed fields, `classification`, `reason`, original value, normalized flag |
+| | `users` | `id`, `name` (unique), `role` (Analyst / Admin). `system` is seeded by the first migration |
+| Ingestion | `background_jobs` | `type` (Import / Snapshot), `status` (Queued / Running / Succeeded / Failed), `done`, `total`, `error`, `correlation_id`. Used by imports and snapshots |
+| | `imports` | file name, storage URI, sha256, `uploaded_by`, `uploaded_at`, `published_at` (nullable, file level; shown in the import report and conflict cards), counts per classification, report. The seed load is also an import by `system` |
+| | `import_rows` | PK (`import_id`, `row_number`), raw line, parsed fields as text (including the per-row `published_at`), original country code, `classification`, `reason`, original value, normalized flag |
 | Approved data | `votes` | `assembly_vote_id` UNIQUE, session, vote date, title, first import |
 | | `country_votes` | PK (`vote_id`, `country_code`), `ballot` CHECK (Y/N/A/X), source import and source row, approved by / at |
-| | `vote_positions` | `vote_id` PK/FK, position (Y/N), `weight` CHECK 1..5 |
-| Review | `conflicts` | kind (country vote / vote field), approved value, proposed value, both source imports, `status` (Pending / Approved / Rejected), decided by / at / note |
+| | `vote_positions` | `vote_id` PK/FK, `desired_outcome` (Y/N), `weight` CHECK 1..5 |
+| Review | `conflicts` | `kind` (CountryVote / VoteField), `country_code` (CountryVote) or `field_name` (`session`, `vote_date`, `title`; VoteField), approved value, proposed value, both source imports, `status` (Pending / Approved / Rejected), decided by / at / note |
 | History | `audit_events` | entity, entity id, vote id, action, old value, new value (jsonb), actor, import id, correlation id, time. Feeds the vote timeline |
-| Snapshots | `snapshots` | name, filter, rules used, status, quarter, published by / at |
-| | `snapshot_votes` | frozen copy of position and weight, included flag and reason |
+| Snapshots | `snapshots` | name, filter, rules used, `status` (Calculating / Saved / Failed / Published), `quarter` (nullable until published), published by / at. Un-publishing returns to Saved and writes an audit event |
+| | `snapshot_votes` | frozen copy of `desired_outcome` and weight, included flag and reason |
 | | `snapshot_scores` | `country_code`, score (nullable), rank (nullable), counted and matched weight |
 | | `snapshot_contributions` | `country_code`, `vote_id`, ballot, counted flag, reason, weight, matched |
 | Bonus | `pdf_extractions` | only if the bonus is built |
@@ -25,14 +25,16 @@ PostgreSQL, accessed with EF Core and Npgsql. Schema managed by migrations. Larg
 - One country has many membership periods.
 - One import has many import rows. Imports and snapshots each point to one background job.
 - One vote has many country votes, at most one position, and many conflicts.
-- One snapshot has many snapshot votes, scores and contributions.
+- One snapshot has many snapshot votes, scores and contributions. A contribution refers to a vote of the same snapshot.
+- All foreign keys are `ON DELETE RESTRICT`: approved data, imports and snapshots are never deleted.
 
 ## Integrity rules enforced by the database
-- `ballot` is one of Y, N, A, X. `weight` is between 1 and 5. Position is Y or N.
+- `ballot` is one of Y, N, A, X. `weight` is between 1 and 5. `desired_outcome` is Y or N.
 - `assembly_vote_id` is unique. A country has one ballot per vote (composite primary key).
 - Membership periods of one country never overlap (exclusion constraint, needs the `btree_gist` extension).
-- `conflicts` is unique on (target, proposed value), so a re-upload never reopens a conflict, including one already decided.
-- At most one snapshot is published per quarter (partial unique index).
+- At most one **Pending** conflict per (target, proposed value): partial unique index on (`vote_id`, `kind`, `country_code`, `field_name`, `proposed_value`) `NULLS NOT DISTINCT WHERE status = 'Pending'`. A re-upload never duplicates a pending conflict, and decided conflicts do not block a later change of the same value (Y -> A -> Y -> A).
+- A conflict targets either a country (CountryVote) or a field (VoteField), never both. Decided by / at are set exactly when the status is not Pending.
+- At most one snapshot is published per quarter (partial unique index). A Published snapshot must have a quarter.
 
-## Suggested indexes
-`import_rows (import_id, row_number)`, `audit_events (vote_id, occurred_at)`, `conflicts (status)`, `country_votes (country_code)`.
+## Indexes
+`import_rows (import_id, row_number)` (primary key), `audit_events (vote_id, occurred_at)`, `conflicts (status)`, `country_votes (country_code)`, plus one index per foreign key.

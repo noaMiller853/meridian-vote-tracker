@@ -13,10 +13,30 @@ Stack: ASP.NET Core, PostgreSQL, Angular, Docker Compose.
 ## Run
 1. Optional: copy `.env.example` to `.env`.
 2. Start the database: `docker compose up -d db`
-3. Apply migrations and start the API: `dotnet run --project src/Meridian.Api`
+3. Apply migrations (see Database setup) and start the API: `dotnet run --project src/Meridian.Api`
 4. Start the web app: `cd src/web && ng serve`
 
 TODO: replace steps 2 to 4 with a single `docker compose up` once the API and web services are in the compose file.
+
+## Database setup
+The API reads the connection string `ConnectionStrings:Default` from configuration and fails at startup if it is missing. It is never in code or in `appsettings*.json`.
+
+1. Restore the local tools (pins `dotnet-ef`): `dotnet tool restore`
+2. Start PostgreSQL: `docker compose up -d db` (host port is `POSTGRES_PORT` from `.env`, default 5432)
+3. Store the connection string for local runs in user-secrets (kept outside the repository). Use the port and credentials from your `.env`:
+   ```
+   dotnet user-secrets set "ConnectionStrings:Default" "Host=localhost;Port=5432;Database=meridian;Username=meridian;Password=<password>" --project src/Meridian.Api
+   ```
+   ASP.NET Core does not read `.env` itself. In Docker, CI or Azure, set the environment variable `ConnectionStrings__Default` instead.
+4. Apply the migrations:
+   ```
+   dotnet ef database update --project src/Meridian.Infrastructure --startup-project src/Meridian.Api
+   ```
+
+Add a migration after a model change:
+```
+dotnet ef migrations add <Name> --project src/Meridian.Infrastructure --startup-project src/Meridian.Api --output-dir Persistence/Migrations
+```
 
 ## Tests
 `dotnet test`. Integration tests start a real PostgreSQL through Testcontainers, so Docker must be running.

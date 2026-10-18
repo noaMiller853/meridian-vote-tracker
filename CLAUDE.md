@@ -14,6 +14,8 @@ ASP.NET Core (.NET 8+), EF Core + Npgsql, PostgreSQL (Docker), Angular, OpenAPI,
 ## Commands (update as they come to exist)
 - `docker compose up` : whole system
 - `dotnet build` / `dotnet test`
+- `dotnet tool restore`, then `dotnet ef database update --project src/Meridian.Infrastructure --startup-project src/Meridian.Api` (connection string from user-secrets or `ConnectionStrings__Default`)
+- New migration: `dotnet ef migrations add <Name> --project src/Meridian.Infrastructure --startup-project src/Meridian.Api --output-dir Persistence/Migrations`
 - `ng serve` (inside `src/web`)
 
 ## Domain rules that must never be broken
