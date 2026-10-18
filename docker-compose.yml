@@ -1,0 +1,23 @@
+# Local development stack.
+# Today: PostgreSQL only. The API and the Angular app are added as services later,
+# so that a single `docker compose up` starts the whole system.
+services:
+  db:
+    image: postgres:17
+    container_name: meridian-db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-meridian}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-meridian_dev}   # local development only
+      POSTGRES_DB: ${POSTGRES_DB:-meridian}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - meridian-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-meridian} -d ${POSTGRES_DB:-meridian}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  meridian-db-data:

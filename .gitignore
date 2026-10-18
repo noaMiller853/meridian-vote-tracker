@@ -1,0 +1,24 @@
+# .NET
+bin/
+obj/
+.vs/
+*.user
+*.suo
+TestResults/
+
+# Angular / Node
+node_modules/
+dist/
+.angular/
+
+# Secrets and local configuration (never commit)
+.env
+*.local.json
+secrets.json
+
+# Large data file provided separately (about 100 MB)
+data_candidate/assembly_historic.csv
+
+# Editors and logs
+.idea/
+*.log
