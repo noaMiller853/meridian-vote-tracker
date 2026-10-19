@@ -56,12 +56,19 @@ Every `/api` request names the acting user in the `X-User` header (`Dana`, `Omar
 | `POST` | `/api/imports` | Upload a CSV export (multipart field `file`, up to 250 MB). Returns 202 with the import id at once; processing runs in the background |
 | `GET` | `/api/imports/{id}` | One import: status (Queued, Running, Succeeded, Failed), phase, rows done / total, error, counts, report |
 | `GET` | `/api/imports` | Import history, newest first (`?take=`) |
+| `GET` | `/api/imports/{id}/report` | Import report: counts per class, conflicts opened / already waiting / already rejected, normalizations by field, empty optional fields, votes created or in contradiction, warnings |
+| `GET` | `/api/imports/{id}/rows` | Rows with class, reason and original value. Default: flagged rows (Invalid, Duplicate, Contradiction, Conflict); `class=All` or e.g. `class=Invalid,Conflict`; `vote=`; paged with `after=<line>` and `take` (max 500) |
+| `GET` | `/api/imports/{id}/votes` | What happened in each vote (`status=`, paged with `after=<vote id>`) |
+| `GET` | `/api/imports/{id}/vote?assemblyVoteId=MA/2024/025` | One vote of the import with all its rows |
 | `GET` | `/health` | Liveness, no user needed |
 
 ```
 curl -H "X-User: Dana" -F "file=@assembly_export_2024_q1.csv" http://localhost:5284/api/imports
 curl -H "X-User: Dana" http://localhost:5284/api/imports/2
+curl -H "X-User: Dana" "http://localhost:5284/api/imports/2/rows?class=Invalid"
 ```
+
+Line numbers in reports are lines in the file (the header is line 1). Recommended order for the provided files: q1, then rev2 (opens 6 ballot and 2 vote-field conflicts), then the historic file (about 75 s for 962,171 lines).
 
 Uploaded files are kept in `FileStore:LocalRoot` (Development: `data/uploads` at the repository root, git-ignored), named by their sha256. Import settings: `Imports:PollSeconds`, `Imports:ProgressIntervalMs`, `Imports:CommandTimeoutSeconds`.
 

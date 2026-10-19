@@ -9,8 +9,9 @@ PostgreSQL, accessed with EF Core and Npgsql. Schema managed by migrations (`src
 | | `users` | `id`, `name` (unique), `role` (Analyst / Admin). `system` is seeded by the first migration; Dana, Omar and Lena at startup |
 | Ingestion | `background_jobs` | `type` (Import / Snapshot), `status` (Queued / Running / Succeeded / Failed), `phase` (Reading / Classifying / Writing while Running; `total` is null while Reading), `done`, `total`, `error`, `correlation_id`, created / started / finished at. Used by imports and snapshots; `imports.background_job_id` points to the job of an upload (the seed import has none) |
 | | `imports` | `kind` (Votes / MemberStates; the seed file shows as `member_states.csv (seed)`), file name, storage URI, sha256 (indexed with kind), `uploaded_by`, `uploaded_at`, `published_at` (nullable, file level; shown in the import report and conflict cards), counts per classification, report. The seed load is also an import by `system` |
-| | `import_rows` | PK (`import_id`, `row_number`), raw line, parsed fields as text (including the per-row `published_at`), original country code, `classification`, `reason`, original value, normalized flag |
-| Approved data | `votes` | `assembly_vote_id` UNIQUE, session, vote date, title, first import |
+| | `import_rows` | PK (`import_id`, `row_number` = line in the file, header = line 1), raw line, the fields as found (text, including the per-row `published_at`), normalized `country_code` and the original one, `field_count`, `classification`, `reason`, original value, `problems` and `normalizations` (jsonb), `conflict_action` (Open / AlreadyPending / AlreadyRejected), normalized flag |
+| | `import_votes` | PK (`import_id`, `assembly_vote_id`): what happened to each vote in an import. `vote_id` (nullable), `status` (New / Existing / Contradiction / NoValidDetails), `vote_created`, counts per class, conflicts opened / already pending / already rejected, vote-field changes (jsonb), contradiction reason |
+| Approved data | `votes` | `assembly_vote_id` UNIQUE, session, vote date, title, first import, `source_import_id` (the import that last set the details; approved source of a vote-field conflict) |
 | | `country_votes` | PK (`vote_id`, `country_code`), `ballot` CHECK (Y/N/A/X), source import and source row, approved by / at |
 | | `vote_positions` | `vote_id` PK/FK, `desired_outcome` (Y/N), `weight` CHECK 1..5 |
 | Review | `conflicts` | `kind` (CountryVote / VoteField), `country_code` (CountryVote) or `field_name` (`session`, `vote_date`, `title`; VoteField), approved value, proposed value, both source imports, `status` (Pending / Approved / Rejected), decided by / at / note |
@@ -37,4 +38,4 @@ PostgreSQL, accessed with EF Core and Npgsql. Schema managed by migrations (`src
 - At most one snapshot is published per quarter (partial unique index). A Published snapshot must have a quarter.
 
 ## Indexes
-`import_rows (import_id, row_number)` (primary key), `audit_events (vote_id, occurred_at)`, `conflicts (status)`, `country_votes (country_code)`, plus one index per foreign key.
+`import_rows (import_id, row_number)` (primary key), `import_rows (import_id, classification, row_number)` and `(import_id, assembly_vote_id, row_number)` for the paged report, `audit_events (vote_id, occurred_at)`, `conflicts (status)`, `country_votes (country_code)`, plus one index per foreign key.
