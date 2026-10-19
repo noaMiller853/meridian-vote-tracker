@@ -111,9 +111,9 @@ public sealed record ValidRow(
     : ValidatedRow(LineNumber, AssemblyVoteId, Normalizations, EmptyOptionalFields);
 
 /// <param name="Details">
-/// The row's vote details when they are valid on their own (vote id, session, date and title), even though the
-/// country part of the row is not (unknown code, non-member, bad ballot). Such a row still counts for the vote's
-/// details (DECISIONS §1). Null when the row's own details are invalid or the column count is wrong.
+/// The row's vote details when the row is structurally valid (every field has its expected form; the only problems are
+/// an unknown country or a non-member). They are used only for a vote that has no valid row at all (DECISIONS §1).
+/// Null for any other Invalid row, for example a mis-split line or a bad date.
 /// </param>
 public sealed record InvalidRow(
     int LineNumber,

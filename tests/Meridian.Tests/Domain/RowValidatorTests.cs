@@ -259,13 +259,12 @@ public class RowValidatorTests
         Assert.Equal("DEU", row.CountryCode);
     }
 
-    // ---- Vote details of an Invalid row (DECISIONS §1: checked separately from the country part) ----
+    // ---- Vote details of an Invalid row (DECISIONS §1: kept only when the row is structurally valid) ----
 
     [Theory]
     [InlineData(2143, "MA/2024/015,79,2024-02-05,Climate Adaptation Finance,FRN,France,X,2024-04-02T09:00:00Z")] // q1: unknown code
     [InlineData(4854, "MA/2024/033,79,2024-02-28,Migrant Workers,NZL,New Zealand,Y,2024-04-02T09:00:00Z")]  // q1: not a member
-    [InlineData(2842, "MA/2024/020,79,2024-02-14,Counter-Terrorism,ARG,Argentina,Yes,2024-04-02T09:00:00Z")] // q1: bad ballot
-    public void Invalid_country_part_keeps_valid_vote_details(int line, string csv)
+    public void Structurally_valid_row_with_only_a_reference_data_problem_keeps_its_vote_details(int line, string csv)
     {
         var row = Assert.IsType<InvalidRow>(Validate(line, csv));
 
@@ -278,7 +277,11 @@ public class RowValidatorTests
     [InlineData("MA/2024/027,79,2024-02-21,,AFG,Afghanistan,X,")]                   // empty title
     [InlineData(",79,2024-02-21,Landmine Clearance,AFG,Afghanistan,X,")]            // empty vote id
     [InlineData("MA/2024/022,79,2024-02-17,Arms Trade Transparency,AGO;N")]         // q1 line 3139: wrong column count
-    public void Invalid_vote_part_gives_no_vote_details(string csv)
+    [InlineData("MA/2024/020,79,2024-02-14,Counter-Terrorism,ARG,Argentina,Yes,")]  // q1 line 2842: bad ballot
+    // Historic line 687843: an unquoted comma in the title plus a missing published_at column give exactly 8 fields,
+    // shifted by one: the title is cut and country_code holds the rest of the title.
+    [InlineData("MA/2017/216,72,2017-05-01,Protection of Cultural Heritage, Including Capacity Building,MEX,,N")]
+    public void Row_that_is_not_structurally_valid_gives_no_vote_details(string csv)
     {
         var row = Assert.IsType<InvalidRow>(Validate(5, csv));
 

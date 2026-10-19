@@ -156,6 +156,45 @@ public sealed class ImportPipelineTests(PostgresFixture fixture)
     }
 
     [Fact]
+    public async Task Mis_split_line_is_invalid_and_does_not_cost_its_vote()
+    {
+        // (a) The real historic case: 149 valid rows of MA/2017/216 (all members on 2017-05-01; TLS joined in 2023) and the
+        // mis-split line 687843, whose unquoted comma in the title shifts every following field.
+        await using var api = await TestApi.StartAsync(fixture);
+        var codes = File.ReadAllLines(SeedFiles.RealMemberStates).Skip(1).Select(l => l.Split(',')[0]).Distinct().Where(c => c != "TLS").ToList();
+        var rows = codes.Select(c => $"MA/2017/216,72,2017-05-01,\"Protection of Cultural Heritage, Including Capacity Building\",{c},Name,N,2017-05-03T09:00:00Z").ToList();
+        rows.Insert(70, "MA/2017/216,72,2017-05-01,Protection of Cultural Heritage, Including Capacity Building,MEX,,N");
+
+        var import = await api.ImportAsync("mis-split.csv", Csv([.. rows]));
+
+        Assert.Equal((149, 1, 0), (import.Import.Counts.New, import.Import.Counts.Invalid, import.Import.Counts.Contradiction));
+        var vote = await api.GetAsync<ImportVoteDetails>($"/api/imports/{import.Import.Id}/vote?assemblyVoteId=MA/2017/216");
+        Assert.Equal(("New", true), (vote.Vote.Status, vote.Vote.VoteCreated));
+        var invalid = Assert.Single(vote.Rows, r => r.Classification == "Invalid");
+        Assert.Equal((72, "country_code ' Including Capacity Building' is not a member state; ballot is empty"), (invalid.Line, invalid.Reason));
+        await using var db = api.Db();
+        Assert.Equal("Protection of Cultural Heritage, Including Capacity Building", await db.Votes.Select(v => v.Title).SingleAsync());
+        Assert.Equal(149, await db.CountryVotes.CountAsync());
+    }
+
+    [Fact]
+    public async Task Two_valid_rows_with_truly_different_titles_make_the_vote_a_contradiction()
+    {
+        // (b) The contradiction rule (ING-06) still holds for real disagreements between valid rows.
+        await using var api = await TestApi.StartAsync(fixture);
+
+        var import = await api.ImportAsync("titles.csv", Csv(
+            Row("MA/2024/090", "Ocean Plastic Pollution", "BRA", "Brazil", "Y"),
+            Row("MA/2024/090", "Ocean Plastic Pollution in Coastal Zones", "IND", "India", "N")));
+
+        Assert.Equal((0, 2), (import.Import.Counts.New, import.Import.Counts.Contradiction));
+        var vote = await api.GetAsync<ImportVoteDetails>($"/api/imports/{import.Import.Id}/vote?assemblyVoteId=MA/2024/090");
+        Assert.Equal(("Contradiction", false), (vote.Vote.Status, vote.Vote.VoteCreated));
+        await using var db = api.Db();
+        Assert.False(await db.Votes.AnyAsync());
+    }
+
+    [Fact]
     public async Task Page_size_is_capped_at_500_rows()
     {
         await using var api = await TestApi.StartAsync(fixture);

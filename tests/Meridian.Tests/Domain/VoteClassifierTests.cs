@@ -198,29 +198,70 @@ public class VoteClassifierTests
     }
 
     [Fact]
-    public void Invalid_country_row_with_different_details_makes_the_vote_a_contradiction()
+    public void Invalid_row_with_different_details_never_makes_the_vote_a_contradiction()
     {
-        // Line 11 is Invalid (unknown code) but its own vote details are valid, so its title counts.
+        // Line 11 is Invalid (unknown code). Only valid rows count for the vote details when there are any (ING-07).
         var v = Classify("MA/2024/080", null,
             (10, "MA/2024/080,79,2024-02-05,Title,AFG,Afghanistan,Y,"),
             (11, "MA/2024/080,79,2024-02-05,Title (draft),FRN,France,Y,"));
 
-        Assert.Equal(VoteStatus.Contradiction, v.Status);
-        Assert.Equal([RowClassification.Contradiction, RowClassification.Invalid], Classes(v));
-        Assert.Equal(
-            "vote details differ between rows: resolution_title 'Title' on 1 row (line 10); resolution_title 'Title (draft)' on 1 row (line 11)",
-            v.ContradictionReason);
+        Assert.Equal(VoteStatus.New, v.Status);
+        Assert.Equal("Title", v.Details!.Title);
+        Assert.Equal([RowClassification.New, RowClassification.Invalid], Classes(v));
+        Assert.Null(v.ContradictionReason);
     }
 
     [Fact]
-    public void Invalid_country_rows_of_an_existing_vote_still_report_a_changed_title()
+    public void Real_historic_mis_split_line_does_not_make_its_vote_a_contradiction()
+    {
+        // Historic MA/2017/216: line 687843 has an unquoted comma in the title (and no published_at column), so its fields
+        // shift by one. It is Invalid; the vote is still created from the valid rows.
+        const string t = "\"Protection of Cultural Heritage, Including Capacity Building\"";
+        var v = Classify("MA/2017/216", null,
+            (100, $"MA/2017/216,72,2017-05-01,{t},PRY,Paraguay,N,2017-05-03T09:00:00Z"),
+            (101, $"MA/2017/216,72,2017-05-01,{t},URY,Uruguay,Y,2017-05-03T09:00:00Z"),
+            (687843, "MA/2017/216,72,2017-05-01,Protection of Cultural Heritage, Including Capacity Building,MEX,,N"));
+
+        Assert.Equal(VoteStatus.New, v.Status);
+        Assert.Equal("Protection of Cultural Heritage, Including Capacity Building", v.Details!.Title);
+        Assert.Equal([RowClassification.New, RowClassification.New, RowClassification.Invalid], Classes(v));
+        Assert.Equal("country_code ' Including Capacity Building' is not a member state; ballot is empty", v.Rows[2].Reason);
+    }
+
+    [Fact]
+    public void Two_valid_rows_with_truly_different_titles_are_still_a_contradiction()
+    {
+        var v = Classify("MA/2024/081", null,
+            (10, "MA/2024/081,79,2024-02-05,Ocean Plastic Pollution,AFG,Afghanistan,Y,"),
+            (11, "MA/2024/081,79,2024-02-05,Ocean Plastic Pollution in Coastal Zones,ALB,Albania,Y,"));
+
+        Assert.Equal(VoteStatus.Contradiction, v.Status);
+        Assert.Equal([RowClassification.Contradiction, RowClassification.Contradiction], Classes(v));
+    }
+
+    [Fact]
+    public void Invalid_rows_of_an_existing_vote_never_open_a_vote_field_conflict()
     {
         var approved = Existing(79, "2024-01-11", "T104", new Dictionary<string, Ballot>());
 
         var v = Classify("104", approved, (7, "104,79,2024-01-11,T104 corrected,FRN,France,X,"));
 
         Assert.Equal(RowClassification.Invalid, Assert.Single(v.Rows).Classification);
-        Assert.Equal(new VoteFieldChange("title", "T104", "T104 corrected", ConflictAction.Open), Assert.Single(v.FieldConflicts));
+        Assert.Equal(VoteStatus.Existing, v.Status);
+        Assert.Empty(v.FieldConflicts); // trade-off: a title change carried only by Invalid rows is not reported
+    }
+
+    [Fact]
+    public void Rejected_rows_only_that_disagree_create_no_vote()
+    {
+        var v = Classify("104", null,
+            (7, "104,79,2024-01-11,T104,FRN,France,X,"),
+            (8, "104,79,2024-01-11,T104 other,NZL,New Zealand,Y,"));
+
+        Assert.Equal(VoteStatus.NoValidDetails, v.Status);
+        Assert.Null(v.Details);
+        Assert.StartsWith("rejected rows only, and vote details differ between rows", v.ContradictionReason);
+        Assert.All(v.Rows, r => Assert.Equal(RowClassification.Invalid, r.Classification));
     }
 
     [Fact]

@@ -59,10 +59,13 @@ public enum VoteStatus
     /// <summary>The vote exists; rows and details are compared with the approved data.</summary>
     Existing,
 
-    /// <summary>Rows with valid vote details disagree on session, date or title; nothing of this vote is ingested.</summary>
+    /// <summary>Valid rows disagree on session, date or title; nothing of this vote is ingested.</summary>
     Contradiction,
 
-    /// <summary>No row has valid vote details (for example every date is bad), so there is no vote to create or compare.</summary>
+    /// <summary>
+    /// There is no valid row and no structurally valid row to take the vote details from, or only rejected rows with
+    /// details that disagree; no vote is created or compared.
+    /// </summary>
     NoValidDetails,
 }
 
@@ -92,11 +95,17 @@ public static class VoteClassifier
 
         var valid = rows.OfType<ValidRow>().OrderBy(r => r.LineNumber).ToList();
 
-        // The vote part is checked separately from the country part (DECISIONS §1): a row that is Invalid only because
-        // of its country or ballot still contributes its vote details; a row whose own details are invalid does not,
-        // so a single bad date cannot create a fake contradiction.
-        var contributions = valid.Select(r => (r.LineNumber, r.Details))
-            .Concat(rows.OfType<InvalidRow>().Where(r => r.Details is not null).Select(r => (r.LineNumber, Details: r.Details!)))
+        // Where the vote details come from (DECISIONS §1, two tiers):
+        // 1. If the vote has valid rows, only they count. An Invalid row never takes part in the agreement check, so a
+        //    rejected row (for example a line mis-split by an unquoted comma in the title) never causes a Contradiction
+        //    and never opens a vote-field conflict (ING-07).
+        // 2. Without any valid row, the structurally valid Invalid rows (only an unknown or non-member country) give the
+        //    details, so the vote can still be created (spec 7.2 vote 104). They only create votes; they never open
+        //    vote-field conflicts.
+        var fromValidRows = valid.Count > 0;
+        var contributions = (fromValidRows
+                ? valid.Select(r => (r.LineNumber, r.Details))
+                : rows.OfType<InvalidRow>().Where(r => r.Details is not null).Select(r => (r.LineNumber, Details: r.Details!)))
             .OrderBy(c => c.LineNumber)
             .ToList();
         if (contributions.Count == 0)
@@ -108,6 +117,9 @@ public static class VoteClassifier
         if (variants.Count > 1)
         {
             var reason = DescribeDetailVariants(variants);
+            if (!fromValidRows)
+                // Only rejected rows, and they disagree: nothing to choose from, so no vote is created.
+                return Result(VoteStatus.NoValidDetails, null, [], "rejected rows only, and " + reason);
             outcomes.AddRange(valid.Select(r => new RowOutcome(r.LineNumber, RowClassification.Contradiction, reason, r.CountryCode, r.Ballot)));
             return Result(VoteStatus.Contradiction, null, [], reason);
         }
@@ -135,7 +147,9 @@ public static class VoteClassifier
         if (existing is null)
             return Result(VoteStatus.New, details, [], null);
 
-        return Result(VoteStatus.Existing, details, CompareDetails(existing, details), null);
+        // Only valid rows can open a vote-field conflict. Trade-off: a title change that only Invalid rows carry is not
+        // reported as a conflict (DECISIONS §1).
+        return Result(VoteStatus.Existing, details, fromValidRows ? CompareDetails(existing, details) : [], null);
 
         VoteClassification Result(VoteStatus status, VoteDetails? d, IReadOnlyList<VoteFieldChange> fieldConflicts, string? contradiction) =>
             new(assemblyVoteId, status, d, fieldConflicts, contradiction, outcomes.OrderBy(o => o.LineNumber).ToList());

@@ -56,8 +56,7 @@ public static partial class RowValidator
         if (Required(title, ExportColumns.Title, problems, raw.Title) is { } acceptedTitle)
             Record(ExportColumns.Title, raw.Title, acceptedTitle, normalizations);
 
-        // The vote part of the row is judged on its own: it is usable for the vote even if the country part fails.
-        var details = voteId is not null && session is { } sv && voteDate is { } dv && !string.IsNullOrWhiteSpace(title)
+        var voteDetails = voteId is not null && session is { } sv && voteDate is { } dv && !string.IsNullOrWhiteSpace(title)
             ? new VoteDetails(sv, dv, title)
             : null;
 
@@ -95,12 +94,22 @@ public static partial class RowValidator
         if (string.IsNullOrWhiteSpace(raw.PublishedAt)) emptyOptional.Add(ExportColumns.PublishedAt);
 
         if (problems.Count > 0)
-            return new InvalidRow(raw.LineNumber, raw.AssemblyVoteId, countryCode, problems, normalizations, emptyOptional, details);
+        {
+            // Structurally valid: every field has its expected form and the only problems are about reference data
+            // (unknown code, not a member). Only such a row keeps its vote details, and they are used only for a vote
+            // that has no valid row at all (DECISIONS §1, spec 7.2 vote 104). A mis-split line, where an unquoted comma
+            // in the title shifts the columns, puts text in country_code and is not structurally valid.
+            var structural = voteDetails is not null && ballot is not null && countryCode is not null
+                && CountryCodeFormat().IsMatch(countryCode)
+                && problems.All(p => p.Code is RowProblemCode.UnknownCountry or RowProblemCode.NotAMember);
+            return new InvalidRow(raw.LineNumber, raw.AssemblyVoteId, countryCode, problems, normalizations, emptyOptional,
+                structural ? voteDetails : null);
+        }
 
         return new ValidRow(
             raw.LineNumber,
             voteId!,
-            details!,
+            voteDetails!,
             countryCode!,
             ballot!.Value,
             raw.CountryName,
@@ -134,4 +143,7 @@ public static partial class RowValidator
 
     [GeneratedRegex(@"\s+")]
     private static partial Regex Whitespace();
+
+    [GeneratedRegex("^[A-Z]{3}$")]
+    private static partial Regex CountryCodeFormat();
 }

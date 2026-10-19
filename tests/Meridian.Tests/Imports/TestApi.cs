@@ -93,7 +93,8 @@ internal sealed class TestApi : IAsyncDisposable
     {
         using var client = Client(user);
         client.Timeout = TimeSpan.FromMinutes(5);
-        await using var stream = System.IO.File.OpenRead(path);
+        // Shared access, so a spreadsheet that has the file open does not block the test.
+        await using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
         var file = new StreamContent(stream);
         file.Headers.ContentType = new MediaTypeHeaderValue("text/csv");
         var response = await client.PostAsync("/api/imports", new MultipartFormDataContent { { file, "file", Path.GetFileName(path) } });
