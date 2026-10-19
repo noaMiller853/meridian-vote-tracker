@@ -72,13 +72,19 @@ public sealed record ValidRow(
     IReadOnlyList<string> EmptyOptionalFields)
     : ValidatedRow(LineNumber, AssemblyVoteId, Normalizations, EmptyOptionalFields);
 
+/// <param name="Details">
+/// The row's vote details when they are valid on their own (vote id, session, date and title), even though the
+/// country part of the row is not (unknown code, non-member, bad ballot). Such a row still counts for the vote's
+/// details (DECISIONS §1). Null when the row's own details are invalid or the column count is wrong.
+/// </param>
 public sealed record InvalidRow(
     int LineNumber,
     string? AssemblyVoteId,
     string? CountryCode,
     IReadOnlyList<RowProblem> Problems,
     IReadOnlyList<Normalization> Normalizations,
-    IReadOnlyList<string> EmptyOptionalFields)
+    IReadOnlyList<string> EmptyOptionalFields,
+    VoteDetails? Details = null)
     : ValidatedRow(LineNumber, AssemblyVoteId, Normalizations, EmptyOptionalFields)
 {
     public string Reason => string.Join("; ", Problems.Select(p => p.Message));

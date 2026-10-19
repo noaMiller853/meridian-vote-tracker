@@ -50,17 +50,20 @@ public sealed record VoteFieldChange(string Field, string ApprovedValue, string 
 
 public enum VoteStatus
 {
-    /// <summary>The vote does not exist yet; its valid rows are New.</summary>
+    /// <summary>
+    /// The vote does not exist yet and is created with <see cref="VoteClassification.Details"/>, even when none of its
+    /// country rows is ingested (spec 7.2, votes 103 and 104). Its valid rows are New.
+    /// </summary>
     New,
 
-    /// <summary>The vote exists; rows are compared with the approved data.</summary>
+    /// <summary>The vote exists; rows and details are compared with the approved data.</summary>
     Existing,
 
-    /// <summary>Valid rows disagree on session, date or title; nothing of this vote is ingested.</summary>
+    /// <summary>Rows with valid vote details disagree on session, date or title; nothing of this vote is ingested.</summary>
     Contradiction,
 
-    /// <summary>Every row of the vote is Invalid.</summary>
-    NoValidRows,
+    /// <summary>No row has valid vote details (for example every date is bad), so there is no vote to create or compare.</summary>
+    NoValidDetails,
 }
 
 public sealed record VoteClassification(
@@ -83,17 +86,25 @@ public static class VoteClassifier
     {
         var outcomes = new List<RowOutcome>();
 
-        // Invalid rows take no part in the consistency checks, so a single bad value cannot create a fake contradiction.
+        // Invalid rows are always Invalid and never take part in the country checks.
         foreach (var invalid in rows.OfType<InvalidRow>())
             outcomes.Add(new(invalid.LineNumber, RowClassification.Invalid, invalid.Reason, invalid.CountryCode));
 
         var valid = rows.OfType<ValidRow>().OrderBy(r => r.LineNumber).ToList();
-        if (valid.Count == 0)
-            return Result(VoteStatus.NoValidRows, null, [], null);
+
+        // The vote part is checked separately from the country part (DECISIONS §1): a row that is Invalid only because
+        // of its country or ballot still contributes its vote details; a row whose own details are invalid does not,
+        // so a single bad date cannot create a fake contradiction.
+        var contributions = valid.Select(r => (r.LineNumber, r.Details))
+            .Concat(rows.OfType<InvalidRow>().Where(r => r.Details is not null).Select(r => (r.LineNumber, Details: r.Details!)))
+            .OrderBy(c => c.LineNumber)
+            .ToList();
+        if (contributions.Count == 0)
+            return Result(VoteStatus.NoValidDetails, null, [], null);
 
         // ING-05: one set of details per vote. If they disagree the system does not choose, so no row of this vote is
         // ingested (our interpretation, DECISIONS §1).
-        var variants = valid.GroupBy(r => r.Details).ToList();
+        var variants = contributions.GroupBy(c => c.Details, c => c.LineNumber).ToList();
         if (variants.Count > 1)
         {
             var reason = DescribeDetailVariants(variants);
@@ -166,7 +177,7 @@ public static class VoteClassifier
         : ConflictAction.Open;
 
     /// <summary>For example: "vote details differ between rows: title 'X' on 147 rows (lines 3446, ... and 137 more); title 'X (draft)' on 1 row (line 3593)".</summary>
-    private static string DescribeDetailVariants(List<IGrouping<VoteDetails, ValidRow>> variants)
+    private static string DescribeDetailVariants(List<IGrouping<VoteDetails, int>> variants)
     {
         var all = variants.Select(v => v.Key).ToList();
         var differs = new List<(string Name, Func<VoteDetails, string> Value)>();
@@ -175,11 +186,11 @@ public static class VoteClassifier
         if (all.Select(d => d.Title).Distinct().Count() > 1) differs.Add((ExportColumns.Title, d => $"'{d.Title}'"));
 
         var parts = variants
-            .OrderByDescending(v => v.Count()).ThenBy(v => v.First().LineNumber)
+            .OrderByDescending(v => v.Count()).ThenBy(v => v.First())
             .Select(v =>
             {
                 var values = string.Join(", ", differs.Select(f => $"{f.Name} {f.Value(v.Key)}"));
-                var lines = v.Select(r => r.LineNumber).ToList();
+                var lines = v.ToList();
                 var listed = string.Join(", ", lines.Take(MaxLinesListed));
                 var more = lines.Count > MaxLinesListed ? $" and {lines.Count - MaxLinesListed} more" : "";
                 return $"{values} on {lines.Count} row{(lines.Count == 1 ? "" : "s")} (line{(lines.Count == 1 ? "" : "s")} {listed}{more})";

@@ -52,6 +52,11 @@ public static partial class RowValidator
         if (Required(title, ExportColumns.Title, problems, raw.Title) is { } acceptedTitle)
             Record(ExportColumns.Title, raw.Title, acceptedTitle, normalizations);
 
+        // The vote part of the row is judged on its own: it is usable for the vote even if the country part fails.
+        var details = voteId is not null && session is { } sv && voteDate is { } dv && !string.IsNullOrWhiteSpace(title)
+            ? new VoteDetails(sv, dv, title)
+            : null;
+
         var countryCode = Normalize(raw.CountryCode, Upper);
         var knownCountry = false;
         if (Required(countryCode, ExportColumns.CountryCode, problems, raw.CountryCode) is { } code)
@@ -86,12 +91,12 @@ public static partial class RowValidator
         if (string.IsNullOrWhiteSpace(raw.PublishedAt)) emptyOptional.Add(ExportColumns.PublishedAt);
 
         if (problems.Count > 0)
-            return new InvalidRow(raw.LineNumber, raw.AssemblyVoteId, countryCode, problems, normalizations, emptyOptional);
+            return new InvalidRow(raw.LineNumber, raw.AssemblyVoteId, countryCode, problems, normalizations, emptyOptional, details);
 
         return new ValidRow(
             raw.LineNumber,
             voteId!,
-            new VoteDetails(session!.Value, voteDate!.Value, title!),
+            details!,
             countryCode!,
             ballot!.Value,
             raw.CountryName,
