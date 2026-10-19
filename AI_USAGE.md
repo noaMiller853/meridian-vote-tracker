@@ -22,4 +22,5 @@ Add a row whenever something is rejected, fixed or changed. It is hard to recons
 | Schema | Proposed snapshot statuses Draft / Published / Unpublished | Calculating / Saved / Failed / Published; un-publish returns to Saved with an audit event; quarter nullable until published | Matches the background calculation and avoids an extra state |
 | Schema | Named the position column `position` | Renamed to `desired_outcome` | Avoid the SQL keyword |
 | Schema | Proposed the constraint tests in the same commit as the migration | Separate second commit | One meaningful change per commit |
+| Step 2 | AI proposed skipping the seed with a warning when Seed:MemberStatesPath is empty | Changed: startup now fails if the setting is empty and there are no countries (test added) | A system with no countries would mark every row in every import as an unknown country |
 | | | | |
