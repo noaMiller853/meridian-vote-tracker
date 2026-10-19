@@ -21,10 +21,12 @@ public static class DependencyInjection
                 "'dotnet user-secrets set \"ConnectionStrings:Default\" \"...\"' in src/Meridian.Api, " +
                 "or with the ConnectionStrings__Default environment variable.");
 
-        // One data source for EF and for the raw SQL of the import worker (advisory lock, claim, progress, COPY).
+        // Raw SQL of the import worker (advisory lock, claim, progress, COPY) uses this data source. EF gets the connection
+        // string instead: a data source instance is part of EF's internal service-provider key, so one per host would
+        // make EF build a new internal provider for every host (seen with many test hosts in one process).
         services.AddSingleton(_ => NpgsqlDataSource.Create(connectionString));
-        services.AddDbContext<MeridianDbContext>((sp, options) => options
-            .UseNpgsql(sp.GetRequiredService<NpgsqlDataSource>())
+        services.AddDbContext<MeridianDbContext>(options => options
+            .UseNpgsql(connectionString)
             .UseSnakeCaseNamingConvention());
 
         services.Configure<DatabaseOptions>(configuration.GetSection("Database"));

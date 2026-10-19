@@ -43,24 +43,25 @@ public sealed class ImportsController(MeridianDbContext db, CurrentUser user) : 
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Get(long id, CancellationToken ct)
     {
-        var row = await Project(db.Imports.Where(i => i.Id == id)).SingleOrDefaultAsync(ct);
-        if (row is null)
+        var summary = await Summaries(db.Imports.Where(i => i.Id == id)).SingleOrDefaultAsync(ct);
+        if (summary is null)
             return Problem(statusCode: StatusCodes.Status404NotFound, title: "Import not found", detail: $"There is no import {id}.");
 
-        using var report = row.Report is null ? null : JsonDocument.Parse(row.Report);
-        return Ok(new ImportDetails(row.Summary, report?.RootElement.Clone()));
+        var reportJson = await db.Imports.Where(i => i.Id == id).Select(i => i.Report).SingleAsync(ct);
+        using var report = reportJson is null ? null : JsonDocument.Parse(reportJson);
+        return Ok(new ImportDetails(summary, report?.RootElement.Clone()));
     }
 
-    /// <summary>Import history, newest first.</summary>
+    /// <summary>Import history, newest first. Never loads the reports.</summary>
     [HttpGet]
     [ProducesResponseType<IReadOnlyList<ImportSummary>>(StatusCodes.Status200OK)]
     public async Task<IReadOnlyList<ImportSummary>> List([FromQuery] int take = 50, CancellationToken ct = default) =>
-        (await Project(db.Imports.OrderByDescending(i => i.Id).Take(Math.Clamp(take, 1, 500))).ToListAsync(ct))
-        .Select(i => i.Summary).ToList();
+        await Summaries(db.Imports.OrderByDescending(i => i.Id).Take(Math.Clamp(take, 1, 500))).ToListAsync(ct);
 
     // Filter and sort on the entity first: EF cannot translate a filter on the constructed records.
-    private static IQueryable<ImportProjection> Project(IQueryable<Import> imports) =>
-        imports.AsNoTracking().Select(i => new ImportProjection(
+    // The projection does not select imports.report, so listing stays small however large the reports are.
+    private static IQueryable<ImportSummary> Summaries(IQueryable<Import> imports) =>
+        imports.AsNoTracking().Select(i =>
             new ImportSummary(
                 i.Id,
                 i.Kind,
@@ -78,10 +79,7 @@ public sealed class ImportsController(MeridianDbContext db, CurrentUser user) : 
                 i.BackgroundJob == null ? null : i.BackgroundJob.Error,
                 i.BackgroundJob == null ? null : i.BackgroundJob.FinishedAt,
                 new ImportCounts(i.NewCount, i.UnchangedCount, i.DuplicateCount, i.InvalidCount, i.ContradictionCount,
-                    i.ConflictCount, i.NormalizedCount)),
-            i.Report));
-
-    private sealed record ImportProjection(ImportSummary Summary, string? Report);
+                    i.ConflictCount, i.NormalizedCount)));
 }
 
 public sealed record ImportCreatedResponse(long ImportId, long JobId, string Status);

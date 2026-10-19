@@ -285,6 +285,20 @@ public class RowValidatorTests
         Assert.Null(row.Details);
     }
 
+    [Fact]
+    public void Line_that_could_not_be_split_is_invalid_with_only_that_problem_and_no_details()
+    {
+        var problem = new RowProblem(RowProblemCode.MalformedLine, "line", "malformed CSV line: a quote opened at position 27 is never closed",
+            "MA/2024/001,79,2024-01-12,\"abc,FRA,France,Y,");
+        var raw = new RawRow(5, 0, null, null, null, null, null, null, null, null, problem);
+
+        var row = Assert.IsType<InvalidRow>(RowValidator.Validate(raw, RealCalendar));
+
+        Assert.Equal([problem], row.Problems);
+        Assert.Null(row.Details);
+        Assert.Empty(row.EmptyOptionalFields);
+    }
+
     // ---- Optional fields ----
 
     [Fact]

@@ -13,6 +13,10 @@ public static partial class RowValidator
 {
     public static ValidatedRow Validate(RawRow raw, MembershipCalendar calendar)
     {
+        // CSV format is a per-row check (ING-04): a line that could not be split is Invalid on its own (ING-07).
+        if (raw.LineProblem is { } lineProblem)
+            return new InvalidRow(raw.LineNumber, raw.AssemblyVoteId, null, [lineProblem], [], []);
+
         if (raw.FieldCount != ExportColumns.Count)
         {
             // The fields cannot be trusted when columns are missing or extra, so this is the only problem reported.

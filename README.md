@@ -22,7 +22,7 @@ TODO: replace steps 2 to 4 with a single `docker compose up` once the API and we
 The API reads the connection string `ConnectionStrings:Default` from configuration and fails at startup if it is missing. It is never in code or in `appsettings*.json`.
 
 1. Restore the local tools (pins `dotnet-ef`): `dotnet tool restore`
-2. Start PostgreSQL: `docker compose up -d db` (host port is `POSTGRES_PORT` from `.env`, default 5432)
+2. Start PostgreSQL: `docker compose up -d db` (host port is `POSTGRES_PORT` from `.env`, default 5432). The port is bound to `127.0.0.1` only, and the default password in `docker-compose.yml` and `.env.example` is for local development only.
 3. Store the connection string for local runs in user-secrets (kept outside the repository). Use the port and credentials from your `.env`:
    ```
    dotnet user-secrets set "ConnectionStrings:Default" "Host=localhost;Port=5432;Database=meridian;Username=meridian;Password=<password>" --project src/Meridian.Api

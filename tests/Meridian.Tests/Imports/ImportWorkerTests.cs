@@ -5,6 +5,7 @@ using Meridian.Tests.Persistence;
 using Meridian.Tests.Startup;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Npgsql;
 
@@ -38,17 +39,29 @@ public sealed class ImportWorkerTests(PostgresFixture fixture)
     }
 
     [Fact]
-    public async Task Failure_rolls_back_everything_the_import_wrote()
+    public async Task Failure_rolls_back_everything_the_import_wrote_and_hides_the_exception_message()
     {
         var failing = new GatedProcessor { Fail = true };
         failing.Release.SetResult();
-        await using var api = await TestApi.StartAsync(fixture, services: s => s.AddScoped<IImportProcessor>(_ => failing));
+        var logs = new CapturingLoggerProvider();
+        await using var api = await TestApi.StartAsync(fixture, services: s =>
+        {
+            s.AddScoped<IImportProcessor>(_ => failing);
+            s.AddSingleton<ILoggerProvider>(logs);
+        });
 
-        var created = await api.UploadAsync("sample.csv", TestApi.SampleCsv);
+        var created = await api.UploadAsync("sample.csv", TestApi.SampleCsv, correlationId: "ref-77");
         var done = await api.WaitUntilFinishedAsync(created.ImportId);
 
-        Assert.Equal(("Failed", "Processing failed: boom"), (done.Import.Status, done.Import.Error));
-        Assert.Equal("boom", done.Report!.Value.GetProperty("error").GetString());
+        // The user gets a reference, never the exception text...
+        const string expected = "Processing failed. Reference: ref-77; details are in the server log.";
+        Assert.Equal(("Failed", expected), (done.Import.Status, done.Import.Error));
+        Assert.Equal(expected, done.Report!.Value.GetProperty("error").GetString());
+        using (var client = api.Client())
+            Assert.DoesNotContain("boom", await client.GetStringAsync($"/api/imports/{created.ImportId}"));
+        // ...and the server log has the real exception.
+        Assert.Contains(logs.Entries, e => e.Level == LogLevel.Error && e.Exception?.Message == "boom");
+
         await using var db = api.Db();
         Assert.False(await db.AuditEvents.AnyAsync(a => a.Entity == "test"));
         Assert.Equal(["Uploaded", "Failed"], await db.AuditEvents.Where(a => a.ImportId == created.ImportId).OrderBy(a => a.Id).Select(a => a.Action).ToListAsync());

@@ -23,7 +23,7 @@ public sealed class JobProgress(NpgsqlDataSource dataSource, long jobId, TimeSpa
     {
         _phase = phase;
         _lastWrite = Stopwatch.GetTimestamp();
-        await using var cmd = dataSource.CreateCommand("UPDATE background_jobs SET phase = $1, done = $2, total = $3 WHERE id = $4");
+        await using var cmd = dataSource.CreateCommand("UPDATE background_jobs SET phase = $1, done = $2, total = $3 WHERE id = $4 AND status = 'Running'");
         cmd.Parameters.Add(new() { Value = phase });
         cmd.Parameters.Add(new() { Value = done });
         cmd.Parameters.Add(new() { Value = (object?)total ?? DBNull.Value, NpgsqlDbType = NpgsqlTypes.NpgsqlDbType.Integer });

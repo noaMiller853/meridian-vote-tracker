@@ -10,7 +10,8 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-meridian_dev}   # local development only
       POSTGRES_DB: ${POSTGRES_DB:-meridian}
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      # Local machine only: the default password is for development.
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - meridian-db-data:/var/lib/postgresql/data
     healthcheck:

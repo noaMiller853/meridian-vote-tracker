@@ -47,8 +47,10 @@ public sealed record HeaderCheck(IReadOnlyList<string> Missing, IReadOnlyList<st
 public enum Ballot { Y, N, A, X }
 
 /// <summary>
-/// One data line exactly as split by the CSV reader: no trimming, no parsing. Fields are null when the line has fewer
-/// columns. <see cref="FieldCount"/> is the number of columns actually found.
+/// One physical line of the file (header = line 1), exactly as split into fields: no trimming, no parsing. Fields are
+/// null when the line has fewer columns. <see cref="FieldCount"/> is the number of columns actually found.
+/// <see cref="LineProblem"/> is set when the line itself could not be split (malformed quotes, too long); the fields are
+/// then all null.
 /// </summary>
 public sealed record RawRow(
     int LineNumber,
@@ -60,13 +62,20 @@ public sealed record RawRow(
     string? CountryCode,
     string? CountryName,
     string? Ballot,
-    string? PublishedAt);
+    string? PublishedAt,
+    RowProblem? LineProblem = null);
 
 /// <summary>A value that was changed by one of the allowed normalizations (ING-13). Always shown in the import report.</summary>
 public sealed record Normalization(string Field, string Original, string Normalized);
 
 public enum RowProblemCode
 {
+    /// <summary>The line cannot be split into fields reliably (unbalanced quote, quote inside a field, empty line).</summary>
+    MalformedLine,
+
+    /// <summary>The line is longer than the reader accepts; it was skipped without being read into memory.</summary>
+    LineTooLong,
+
     WrongFieldCount,
     MissingField,
     InvalidSession,

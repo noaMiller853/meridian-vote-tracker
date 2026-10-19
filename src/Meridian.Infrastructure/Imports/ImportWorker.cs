@@ -159,13 +159,20 @@ public sealed class ImportWorker(
         catch (Exception ex)
         {
             await tx.RollbackAsync(CancellationToken.None);
-            var (message, report) = ex is ImportFileException file
-                ? (file.Message, file.ReportJson)
-                : ($"Processing failed: {ex.Message}", JsonSerializer.Serialize(new { status = "Failed", error = ex.Message }));
-            if (ex is ImportFileException)
+            string message, report;
+            if (ex is ImportFileException file)
+            {
+                // Written for the user: which columns are wrong.
+                (message, report) = (file.Message, file.ReportJson);
                 logger.LogWarning("Import {ImportId} rejected: {Message}", job.ImportId, message);
+            }
             else
+            {
+                // Never show an exception message (it can contain SQL, paths or data); the log has the details.
+                message = $"Processing failed. Reference: {job.CorrelationId ?? $"job {job.JobId}"}; details are in the server log.";
+                report = JsonSerializer.Serialize(new { status = "Failed", error = message });
                 logger.LogError(ex, "Import {ImportId} failed.", job.ImportId);
+            }
 
             await FailJobsAsync("id = $4", message, report, systemUserId, job.JobId, CancellationToken.None);
         }
