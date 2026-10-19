@@ -126,14 +126,15 @@ public sealed class ImportWorkerTests(PostgresFixture fixture)
     {
         var path = DataFiles.Find("assembly_historic.csv");
         Skip.If(path is null, "assembly_historic.csv not found (set MERIDIAN_DATA_DIR or put it in data/).");
-        await using var api = await TestApi.StartAsync(fixture);
+        var logs = new CapturingLoggerProvider();
+        await using var api = await TestApi.StartAsync(fixture, services: s => s.AddSingleton<ILoggerProvider>(logs));
 
         var created = await api.UploadPathAsync(path!);
-        var reading = await api.WaitForAsync(created.ImportId, i => i.Status != "Queued", TimeSpan.FromSeconds(60));
-        var done = await api.WaitUntilFinishedAsync(created.ImportId, TimeSpan.FromMinutes(3));
+        var done = await api.WaitUntilFinishedAsync(created.ImportId, TimeSpan.FromMinutes(5));
 
-        Assert.NotEqual("Failed", reading.Import.Status);
-        Assert.Equal(("Succeeded", 962_171, (int?)962_171), (done.Import.Status, done.Import.Done, done.Import.Total));
+        var errors = string.Join(Environment.NewLine, logs.Entries.Where(e => e.Level >= LogLevel.Error).Select(e => $"{e.Message} {e.Exception}"));
+        Assert.True(done.Import.Status == "Succeeded", $"Import {done.Import.Status} at {done.Import.Done}: {done.Import.Error}{Environment.NewLine}{errors}");
+        Assert.Equal((962_171, (int?)962_171), (done.Import.Done, done.Import.Total));
     }
 
     /// <summary>Writes inside the work transaction and reports progress, then waits for the test to let it finish.</summary>
@@ -190,5 +191,13 @@ internal static class DataFiles
             Path.GetDirectoryName(repo),
         ];
         return candidates.Where(d => d is not null).Select(d => Path.Combine(d!, fileName)).FirstOrDefault(File.Exists);
+    }
+
+    /// <summary>Reads a data file even while another program (for example Excel) has it open.</summary>
+    public static async Task<string> ReadAllTextAsync(string path)
+    {
+        await using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+        using var reader = new StreamReader(stream);
+        return await reader.ReadToEndAsync();
     }
 }

@@ -37,21 +37,26 @@ internal sealed class TestApi : IAsyncDisposable
 
     /// <param name="connectionString">An existing database; a new empty one when null.</param>
     /// <param name="services">Replacements, for example a test <c>IImportProcessor</c>.</param>
+    /// <param name="settings">Extra configuration, for example <c>Imports:CommandTimeoutSeconds</c>.</param>
     public static async Task<TestApi> StartAsync(PostgresFixture fixture, string? connectionString = null,
-        Action<IServiceCollection>? services = null, string? uploadRoot = null)
+        Action<IServiceCollection>? services = null, string? uploadRoot = null, IDictionary<string, string>? settings = null)
     {
         connectionString ??= await fixture.CreateEmptyDatabaseAsync();
         uploadRoot ??= Directory.CreateTempSubdirectory("meridian-uploads-").FullName;
 
-        var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(b => b
-            .UseEnvironment("Testing")
-            .UseSetting("ConnectionStrings:Default", connectionString)
-            .UseSetting("Database:MigrateOnStartup", "true")
-            .UseSetting("Seed:MemberStatesPath", SeedFiles.RealMemberStates)
-            .UseSetting("FileStore:LocalRoot", uploadRoot)
-            .UseSetting("Imports:PollSeconds", "1")
-            .UseSetting("Imports:ProgressIntervalMs", "50")
-            .ConfigureTestServices(s => services?.Invoke(s)));
+        var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(b =>
+        {
+            b.UseEnvironment("Testing")
+                .UseSetting("ConnectionStrings:Default", connectionString)
+                .UseSetting("Database:MigrateOnStartup", "true")
+                .UseSetting("Seed:MemberStatesPath", SeedFiles.RealMemberStates)
+                .UseSetting("FileStore:LocalRoot", uploadRoot)
+                .UseSetting("Imports:PollSeconds", "1")
+                .UseSetting("Imports:ProgressIntervalMs", "50")
+                .ConfigureTestServices(s => services?.Invoke(s));
+            foreach (var (key, value) in settings ?? new Dictionary<string, string>())
+                b.UseSetting(key, value);
+        });
 
         factory.CreateClient().Dispose(); // starts the host: migrations, seed, worker
         return new TestApi(factory, connectionString, uploadRoot);
@@ -93,6 +98,22 @@ internal sealed class TestApi : IAsyncDisposable
         var response = await client.PostAsync("/api/imports", new MultipartFormDataContent { { file, "file", Path.GetFileName(path) } });
         response.EnsureSuccessStatusCode();
         return (await response.Content.ReadFromJsonAsync<ImportCreatedResponse>())!;
+    }
+
+    public async Task<T> GetAsync<T>(string url)
+    {
+        using var client = Client();
+        return (await client.GetFromJsonAsync<T>(url))!;
+    }
+
+    /// <summary>Uploads and waits until the import has finished; fails the test if it did not succeed.</summary>
+    public async Task<ImportDetails> ImportAsync(string fileName, string content, TimeSpan? timeout = null)
+    {
+        var created = await UploadAsync(fileName, content);
+        var done = await WaitUntilFinishedAsync(created.ImportId, timeout);
+        if (done.Import.Status != "Succeeded")
+            throw new InvalidOperationException($"Import of {fileName} {done.Import.Status}: {done.Import.Error}");
+        return done;
     }
 
     public async Task<ImportDetails> GetAsync(long importId)

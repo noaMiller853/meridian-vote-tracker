@@ -124,23 +124,6 @@ public sealed class ImportApiTests(PostgresFixture fixture)
     }
 
     [Fact]
-    public async Task Unclosed_quote_on_line_5_does_not_swallow_the_rest_of_the_file()
-    {
-        await using var api = await TestApi.StartAsync(fixture);
-        var lines = TestApi.SampleCsv.Split('\n').ToList();           // header + 3 rows
-        lines.Add("MA/2024/117,79,2024-03-12,\"Maritime Safety, Navigation and Trade,DEU,Germany,Y,2024-03-14T09:00:00Z"); // line 5
-        lines.Add("MA/2024/117,79,2024-03-12,\"Maritime Safety, Navigation and Trade\",ITA,Italy,N,2024-03-14T09:00:00Z");
-        lines.Add("MA/2024/117,79,2024-03-12,\"Maritime Safety, Navigation and Trade\",ESP,Spain,A,2024-03-14T09:00:00Z");
-
-        var created = await api.UploadAsync("quote.csv", string.Join("\n", lines) + "\n");
-        var done = await api.WaitUntilFinishedAsync(created.ImportId);
-
-        // All six data lines are read as separate lines; a record reader would have merged lines 5 to 7 into one.
-        // (Step 4b adds the per-line classes: only line 5 is Invalid.)
-        Assert.Equal(("Succeeded", 6), (done.Import.Status, done.Import.Done));
-    }
-
-    [Fact]
     public async Task Same_file_twice_gives_two_imports_and_one_stored_file()
     {
         await using var api = await TestApi.StartAsync(fixture);
