@@ -48,8 +48,25 @@ Add a migration after a model change:
 dotnet ef migrations add <Name> --project src/Meridian.Infrastructure --startup-project src/Meridian.Api --output-dir Persistence/Migrations
 ```
 
+## API
+Every `/api` request names the acting user in the `X-User` header (`Dana`, `Omar` or `Lena`; the UI's user switcher sends it). Without a known user the API answers 401. An optional `X-Correlation-Id` header is echoed back and follows the request into the logs and the audit trail. Errors are ProblemDetails. In Development the OpenAPI document is at `/openapi/v1.json`.
+
+| Method | Path | What it does |
+|---|---|---|
+| `POST` | `/api/imports` | Upload a CSV export (multipart field `file`, up to 250 MB). Returns 202 with the import id at once; processing runs in the background |
+| `GET` | `/api/imports/{id}` | One import: status (Queued, Running, Succeeded, Failed), phase, rows done / total, error, counts, report |
+| `GET` | `/api/imports` | Import history, newest first (`?take=`) |
+| `GET` | `/health` | Liveness, no user needed |
+
+```
+curl -H "X-User: Dana" -F "file=@assembly_export_2024_q1.csv" http://localhost:5284/api/imports
+curl -H "X-User: Dana" http://localhost:5284/api/imports/2
+```
+
+Uploaded files are kept in `FileStore:LocalRoot` (Development: `data/uploads` at the repository root, git-ignored), named by their sha256. Import settings: `Imports:PollSeconds`, `Imports:ProgressIntervalMs`, `Imports:CommandTimeoutSeconds`.
+
 ## Tests
-`dotnet test`. Integration tests start a real PostgreSQL through Testcontainers, so Docker must be running.
+`dotnet test`. Integration tests start a real PostgreSQL through Testcontainers, so Docker must be running. The test that streams the 100 MB historic file looks for `assembly_historic.csv` in `MERIDIAN_DATA_DIR`, then in `data/`, then next to the repository folder, and is skipped when it is not found.
 
 ## Seed data
 - Countries and membership periods: `seed/member_states.csv` (150 countries, 151 periods; Iceland left and came back, so it has two), loaded on startup.

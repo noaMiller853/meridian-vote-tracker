@@ -7,7 +7,7 @@ PostgreSQL, accessed with EF Core and Npgsql. Schema managed by migrations (`src
 | Reference | `countries` | `country_code` PK (three upper-case letters), `name` |
 | | `country_memberships` | `country_code` FK, `member_from`, `member_to` (null = still a member). Exclusion constraint: no overlapping periods per country |
 | | `users` | `id`, `name` (unique), `role` (Analyst / Admin). `system` is seeded by the first migration; Dana, Omar and Lena at startup |
-| Ingestion | `background_jobs` | `type` (Import / Snapshot), `status` (Queued / Running / Succeeded / Failed), `done`, `total`, `error`, `correlation_id`. Used by imports and snapshots |
+| Ingestion | `background_jobs` | `type` (Import / Snapshot), `status` (Queued / Running / Succeeded / Failed), `phase` (Reading / Classifying / Writing while Running; `total` is null while Reading), `done`, `total`, `error`, `correlation_id`, created / started / finished at. Used by imports and snapshots; `imports.background_job_id` points to the job of an upload (the seed import has none) |
 | | `imports` | `kind` (Votes / MemberStates; the seed file shows as `member_states.csv (seed)`), file name, storage URI, sha256 (indexed with kind), `uploaded_by`, `uploaded_at`, `published_at` (nullable, file level; shown in the import report and conflict cards), counts per classification, report. The seed load is also an import by `system` |
 | | `import_rows` | PK (`import_id`, `row_number`), raw line, parsed fields as text (including the per-row `published_at`), original country code, `classification`, `reason`, original value, normalized flag |
 | Approved data | `votes` | `assembly_vote_id` UNIQUE, session, vote date, title, first import |
