@@ -30,7 +30,28 @@ public class VoteClassifierTests
         Assert.Equal("NZL is not a member on 2024-01-11", v104.Rows[1].Reason);
 
         Assert.Equal(VoteStatus.New, v101.Status);
-        Assert.Equal(VoteStatus.NoValidRows, v104.Status);
+    }
+
+    [Fact]
+    public void Spec_example_vote_103_is_created_although_its_only_country_rows_contradict()
+    {
+        var v103 = Classify("103", null, (5, "103,79,2024-01-11,T103,FRA,France,Y,"), (6, "103,79,2024-01-11,T103,FRA,France,N,"));
+
+        Assert.Equal(VoteStatus.New, v103.Status);
+        Assert.Equal(new VoteDetails(79, new DateOnly(2024, 1, 11), "T103"), v103.Details);
+        // No row is New, so no country_votes row will be created for FRA.
+        Assert.DoesNotContain(v103.Rows, r => r.Classification == RowClassification.New);
+    }
+
+    [Fact]
+    public void Spec_example_vote_104_is_created_from_invalid_rows_whose_vote_details_are_valid()
+    {
+        // FRN is unknown and NZL was not a member, but session, date and title of both rows are valid and agree.
+        var v104 = Classify("104", null, (7, "104,79,2024-01-11,T104,FRN,France,X,"), (8, "104,79,2024-01-11,T104,NZL,New Zealand,Y,"));
+
+        Assert.Equal(VoteStatus.New, v104.Status);
+        Assert.Equal(new VoteDetails(79, new DateOnly(2024, 1, 11), "T104"), v104.Details);
+        Assert.All(v104.Rows, r => Assert.Equal(RowClassification.Invalid, r.Classification));
     }
 
     // ---- Spec 7.2, second upload (corrected file), against the data approved by the first upload ----
@@ -41,11 +62,14 @@ public class VoteClassifierTests
         const string d = ",79,2024-01-11,";
         var approved101 = Existing(79, "2024-01-11", "T101", new Dictionary<string, Ballot> { ["BRA"] = Ballot.Y, ["IND"] = Ballot.Y });
 
+        // 103 and 104 were created by the first upload, with details but no country votes.
+        var approved103 = Existing(79, "2024-01-11", "T103", new Dictionary<string, Ballot>());
+        var approved104 = Existing(79, "2024-01-11", "T104", new Dictionary<string, Ballot>());
+
         // The title of 101 changed in the corrected file.
         var v101 = Classify("101", approved101, (1, "101" + d + "T101 corrected,BRA,Brazil,A,"), (2, "101" + d + "T101 corrected,IND,India,Y,"));
-        // 103 and 104 have no approved country votes after the first upload.
-        var v103 = Classify("103", null, (3, "103" + d + "T103,FRA,France,N,"));
-        var v104 = Classify("104", null, (4, "104" + d + "T104,FRA,France,X,"));
+        var v103 = Classify("103", approved103, (3, "103" + d + "T103,FRA,France,N,"));
+        var v104 = Classify("104", approved104, (4, "104" + d + "T104,FRA,France,X,"));
         var v105 = Classify("105", null, (5, "105" + d + "T105,BRA,Brazil,Y,"));
 
         Assert.Equal([RowClassification.Conflict, RowClassification.Unchanged], Classes(v101));
@@ -54,8 +78,14 @@ public class VoteClassifierTests
         var title = Assert.Single(v101.FieldConflicts);
         Assert.Equal(new VoteFieldChange("title", "T101", "T101 corrected", ConflictAction.Open), title);
 
-        Assert.Equal(RowClassification.New, Assert.Single(v103.Rows).Classification);
-        Assert.Equal(RowClassification.New, Assert.Single(v104.Rows).Classification);
+        // Row 3: "the earlier value was not ingested, now there is one clear value". Row 4: "completion of a country missing in the vote".
+        foreach (var v in new[] { v103, v104 })
+        {
+            var row = Assert.Single(v.Rows);
+            Assert.Equal((RowClassification.New, "country missing from the approved vote is added (ING-10)"), (row.Classification, row.Reason));
+            Assert.Equal(VoteStatus.Existing, v.Status);
+            Assert.Empty(v.FieldConflicts);
+        }
         Assert.Equal(RowClassification.New, Assert.Single(v105.Rows).Classification);
         // Vote 102 is not in the file: nothing is classified for it, so nothing can change it (ING-09).
     }
@@ -153,6 +183,44 @@ public class VoteClassifierTests
 
         Assert.Equal([RowClassification.New, RowClassification.Invalid], Classes(v));
         Assert.Equal(VoteStatus.New, v.Status);
+    }
+
+    [Fact]
+    public void Rows_with_a_bad_date_or_column_count_contribute_no_vote_details()
+    {
+        var v = Classify("MA/2024/027", null,
+            (3701, "MA/2024/027,79,21/02/2024,Landmine Clearance and Regional Cooperation,ALB,Albania,Y,2024-04-02T09:00:00Z"),
+            (3139, "MA/2024/027,79,2024-02-21,Landmine Clearance and Regional Cooperation,AGO;N"));
+
+        Assert.Equal(VoteStatus.NoValidDetails, v.Status);
+        Assert.Null(v.Details);
+        Assert.All(v.Rows, r => Assert.Equal(RowClassification.Invalid, r.Classification));
+    }
+
+    [Fact]
+    public void Invalid_country_row_with_different_details_makes_the_vote_a_contradiction()
+    {
+        // Line 11 is Invalid (unknown code) but its own vote details are valid, so its title counts.
+        var v = Classify("MA/2024/080", null,
+            (10, "MA/2024/080,79,2024-02-05,Title,AFG,Afghanistan,Y,"),
+            (11, "MA/2024/080,79,2024-02-05,Title (draft),FRN,France,Y,"));
+
+        Assert.Equal(VoteStatus.Contradiction, v.Status);
+        Assert.Equal([RowClassification.Contradiction, RowClassification.Invalid], Classes(v));
+        Assert.Equal(
+            "vote details differ between rows: resolution_title 'Title' on 1 row (line 10); resolution_title 'Title (draft)' on 1 row (line 11)",
+            v.ContradictionReason);
+    }
+
+    [Fact]
+    public void Invalid_country_rows_of_an_existing_vote_still_report_a_changed_title()
+    {
+        var approved = Existing(79, "2024-01-11", "T104", new Dictionary<string, Ballot>());
+
+        var v = Classify("104", approved, (7, "104,79,2024-01-11,T104 corrected,FRN,France,X,"));
+
+        Assert.Equal(RowClassification.Invalid, Assert.Single(v.Rows).Classification);
+        Assert.Equal(new VoteFieldChange("title", "T104", "T104 corrected", ConflictAction.Open), Assert.Single(v.FieldConflicts));
     }
 
     [Fact]
