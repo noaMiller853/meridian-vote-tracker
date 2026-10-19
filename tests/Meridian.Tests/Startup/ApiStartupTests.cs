@@ -17,7 +17,7 @@ public sealed class ApiStartupTests(PostgresFixture fixture)
         await using var factory = Api(cs, SeedFiles.RealMemberStates);
 
         using var client = factory.CreateClient();
-        var response = await client.GetAsync("/weatherforecast");
+        var response = await client.GetAsync("/health");
 
         Assert.True(response.IsSuccessStatusCode);
         await using var db = PostgresFixture.CreateContext(cs);

@@ -1,47 +1,32 @@
+using Meridian.Api.Http;
 using Meridian.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
+// One error format for the whole API (ProblemDetails), with the correlation id in every error.
+builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = context =>
+    context.ProblemDetails.Extensions["correlationId"] = context.HttpContext.GetCorrelationId());
+builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddScoped<CurrentUser>();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+app.UseExceptionHandler();
+app.UseStatusCodePages();
+app.UseMiddleware<CorrelationIdMiddleware>();
+app.UseMiddleware<CurrentUserMiddleware>();
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
 
-app.UseHttpsRedirection();
-
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
-
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
+app.MapControllers();
+app.MapGet("/health", () => Results.Ok(new { status = "ok" })).ExcludeFromDescription();
 
 app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
 
 // Lets the integration tests start the API with WebApplicationFactory<Program>.
 public partial class Program;

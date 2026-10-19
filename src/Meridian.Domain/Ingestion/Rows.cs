@@ -13,6 +13,35 @@ public static class ExportColumns
     public const string PublishedAt = "published_at";
 
     public const int Count = 8;
+
+    public static readonly IReadOnlyList<string> All =
+        [AssemblyVoteId, Session, VoteDate, Title, CountryCode, CountryName, Ballot, PublishedAt];
+
+    /// <summary>
+    /// File-level rule (ING-07: only this fails a whole file): every Appendix A column must be present, and no unknown or
+    /// repeated column is allowed. Columns are matched by exact name, in any order.
+    /// </summary>
+    public static HeaderCheck CheckHeader(IReadOnlyList<string> header) => new(
+        All.Except(header).ToList(),
+        header.Except(All).Distinct().ToList(),
+        header.Where(All.Contains).GroupBy(h => h).Where(g => g.Count() > 1).Select(g => g.Key).ToList());
+}
+
+public sealed record HeaderCheck(IReadOnlyList<string> Missing, IReadOnlyList<string> Unknown, IReadOnlyList<string> Repeated)
+{
+    public bool IsValid => Missing.Count == 0 && Unknown.Count == 0 && Repeated.Count == 0;
+
+    public string Message
+    {
+        get
+        {
+            var parts = new List<string>();
+            if (Missing.Count > 0) parts.Add($"missing column(s): {string.Join(", ", Missing)}");
+            if (Unknown.Count > 0) parts.Add($"unknown column(s): {string.Join(", ", Unknown)}");
+            if (Repeated.Count > 0) parts.Add($"repeated column(s): {string.Join(", ", Repeated)}");
+            return "The header is not the Assembly export format (" + string.Join("; ", parts) + "). No row was processed.";
+        }
+    }
 }
 
 public enum Ballot { Y, N, A, X }
