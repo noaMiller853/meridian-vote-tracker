@@ -16,8 +16,8 @@ dist/
 *.local.json
 secrets.json
 
-# Large data file provided separately (about 100 MB)
-data_candidate/assembly_historic.csv
+# Data files provided separately (the historic file is about 100 MB)
+data/
 
 # Editors and logs
 .idea/
