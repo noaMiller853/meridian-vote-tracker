@@ -49,7 +49,7 @@ dotnet ef migrations add <Name> --project src/Meridian.Infrastructure --startup-
 ```
 
 ## API
-Every `/api` request names the acting user in the `X-User` header (`Dana`, `Omar` or `Lena`; the UI's user switcher sends it). Without a known user the API answers 401. An optional `X-Correlation-Id` header is echoed back and follows the request into the logs and the audit trail. Errors are ProblemDetails. In Development the OpenAPI document is at `/openapi/v1.json`.
+Every `/api` request names the acting user in the `X-User` header (`Dana`, `Omar` or `Lena`; the UI's user switcher sends it). Without a known user the API answers 401. An optional `X-Correlation-Id` header is echoed back and follows the request into the logs and the audit trail. Errors are ProblemDetails. In Development the OpenAPI document is at `/openapi/v1.json`, and a Swagger UI on top of it is at `/swagger`: press **Authorize**, enter `Dana` as the `X-User` value, then use **POST /api/imports → Try it out** to upload a CSV from the browser. Neither the document nor the UI is served outside Development.
 
 | Method | Path | What it does |
 |---|---|---|

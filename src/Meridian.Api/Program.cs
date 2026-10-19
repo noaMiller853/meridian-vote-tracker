@@ -7,7 +7,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = context =>
     context.ProblemDetails.Extensions["correlationId"] = context.HttpContext.GetCorrelationId());
 builder.Services.AddControllers();
-builder.Services.AddOpenApi();
+builder.Services.AddOpenApi(options => options.AddDocumentTransformer<UserHeaderSecurityScheme>());
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddScoped<CurrentUser>();
 
@@ -21,6 +21,12 @@ app.UseMiddleware<CurrentUserMiddleware>();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    // Browser UI on top of the built-in document, Development only: /swagger. "Authorize" sets X-User.
+    app.UseSwaggerUI(options =>
+    {
+        options.SwaggerEndpoint("/openapi/v1.json", "Meridian API v1");
+        options.EnablePersistAuthorization();
+    });
 }
 
 app.MapControllers();

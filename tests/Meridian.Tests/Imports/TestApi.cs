@@ -39,14 +39,15 @@ internal sealed class TestApi : IAsyncDisposable
     /// <param name="services">Replacements, for example a test <c>IImportProcessor</c>.</param>
     /// <param name="settings">Extra configuration, for example <c>Imports:CommandTimeoutSeconds</c>.</param>
     public static async Task<TestApi> StartAsync(PostgresFixture fixture, string? connectionString = null,
-        Action<IServiceCollection>? services = null, string? uploadRoot = null, IDictionary<string, string>? settings = null)
+        Action<IServiceCollection>? services = null, string? uploadRoot = null, IDictionary<string, string>? settings = null,
+        string environment = "Testing")
     {
         connectionString ??= await fixture.CreateEmptyDatabaseAsync();
         uploadRoot ??= Directory.CreateTempSubdirectory("meridian-uploads-").FullName;
 
         var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(b =>
         {
-            b.UseEnvironment("Testing")
+            b.UseEnvironment(environment)
                 .UseSetting("ConnectionStrings:Default", connectionString)
                 .UseSetting("Database:MigrateOnStartup", "true")
                 .UseSetting("Seed:MemberStatesPath", SeedFiles.RealMemberStates)
