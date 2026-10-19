@@ -10,7 +10,6 @@ namespace Meridian.Api.Controllers;
 
 [ApiController]
 [Route("api/imports")]
-[Produces("application/json")]
 public sealed class ImportsController(MeridianDbContext db, CurrentUser user) : ControllerBase
 {
     /// <summary>The historic file is about 100 MB.</summary>

@@ -13,7 +13,6 @@ namespace Meridian.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/imports/{importId:long}")]
-[Produces("application/json")]
 public sealed class ImportReportController(MeridianDbContext db) : ControllerBase
 {
     private const int MaxTake = 500;
