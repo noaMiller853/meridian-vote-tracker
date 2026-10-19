@@ -63,5 +63,5 @@ TODO: list the Azure settings that are used.
 ## Documents
 - `DECISIONS.md`: decisions, trade-offs, scoring rules
 - `docs/DATABASE.md`: database schema
-- `USAGE_AI.md`: AI tools used and what was corrected
+- `AI_USAGE.md`: AI tools used and what was corrected
 - `CLAUDE.md`: project instructions for Claude Code

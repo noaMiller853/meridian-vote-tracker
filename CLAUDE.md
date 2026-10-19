@@ -44,4 +44,4 @@ ASP.NET Core (.NET 8+), EF Core + Npgsql, PostgreSQL (Docker), Angular, OpenAPI,
 - Plan first and wait for approval before writing code. Work in small steps with one meaningful commit each.
 - Add tests together with each rule.
 - If the spec is ambiguous, ask instead of guessing, then record the decision in DECISIONS.md.
-- When something Claude produced is rejected or corrected, add a line to USAGE_AI.md.
+- When something Claude produced is rejected or corrected, add a line to AI_USAGE.md.
