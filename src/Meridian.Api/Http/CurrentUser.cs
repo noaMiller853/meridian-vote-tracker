@@ -12,6 +12,9 @@ public sealed class CurrentUser
     public string Name { get; private set; } = "";
     public string Role { get; private set; } = "";
 
+    /// <summary>Spec section 3: analysts decide conflicts; the admin may too.</summary>
+    public bool CanDecideConflicts => Role is "Analyst" or "Admin";
+
     internal void Set(long id, string name, string role) => (Id, Name, Role) = (id, name, role);
 }
 
