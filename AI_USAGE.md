@@ -23,4 +23,6 @@ Add a row whenever something is rejected, fixed or changed. It is hard to recons
 | Schema | Named the position column `position` | Renamed to `desired_outcome` | Avoid the SQL keyword |
 | Schema | Proposed the constraint tests in the same commit as the migration | Separate second commit | One meaningful change per commit |
 | Step 2 | AI proposed skipping the seed with a warning when Seed:MemberStatesPath is empty | Changed: startup now fails if the setting is empty and there are no countries (test added) | A system with no countries would mark every row in every import as an unknown country |
+| Step 3 | Proposed no normalization of titles, so one title with a double space (q1 MA/2024/025) would count as a different title | Titles are trimmed and internal whitespace collapsed, reported in the import report; nothing else in a title changes, so the `(draft)` row is still a contradiction | A formatting difference should not block a whole vote; a real text difference must |
+| Step 3 | Proposed rewriting DECISIONS §7 (classification per vote, read back sorted from `import_rows`) in a step without a database | Kept §7 and added one sentence; the batch query will be shown and confirmed in the step 4 plan | Do not decide the database design before the step that builds it |
 | | | | |

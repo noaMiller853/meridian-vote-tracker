@@ -25,7 +25,7 @@ ASP.NET Core (.NET 8+), EF Core + Npgsql, PostgreSQL (Docker), Angular, OpenAPI,
 - Country identity is `country_code`. Names are descriptive only (ING-11).
 - Re-uploading the same or an overlapping file creates no duplicates and does not reopen a pending conflict (ING-12).
 - A bad row never fails the file (ING-07). Problems are reported with row number, reason and original value.
-- Only normalization allowed: trim and upper-case `country_code`. It is always shown in the import report (ING-13).
+- Only normalizations allowed: trim and upper-case `country_code` and `ballot`; trim and collapse internal whitespace in `resolution_title` (no other change to a title). Each one is always shown in the import report with original and normalized value (ING-13).
 - Each row gets exactly one classification: New, Unchanged, Duplicate, Invalid, Contradiction or Conflict.
 - Deciding a conflict is an atomic `UPDATE ... WHERE status = 'Pending'`. The second decider gets HTTP 409 with who, when and what was decided. Decision, approved-value update and audit event happen in one transaction.
 - Snapshots are frozen copies and never change (SNP-04). Only Y and N count in scoring; see DECISIONS.md for the full rules.

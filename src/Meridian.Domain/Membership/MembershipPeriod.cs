@@ -5,6 +5,8 @@ public sealed record MembershipPeriod(string CountryCode, DateOnly From, DateOnl
 {
     public bool IsValid => To is null || To >= From;
 
+    public bool Contains(DateOnly date) => From <= date && (To is null || date <= To);
+
     public bool Overlaps(MembershipPeriod other) =>
         CountryCode == other.CountryCode
         && From <= (other.To ?? DateOnly.MaxValue)
