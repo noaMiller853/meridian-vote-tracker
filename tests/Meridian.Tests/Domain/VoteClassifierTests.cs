@@ -359,6 +359,52 @@ public class VoteClassifierTests
     }
 
     [Fact]
+    public void Value_replaced_by_an_approval_coming_again_from_the_same_file_opens_nothing()
+    {
+        // File A gave BRA Y; file B proposed N and it was approved. Re-uploading A proposes Y again (ING-12).
+        var approved = Existing(79, "2024-01-11", "T", new Dictionary<string, Ballot> { ["BRA"] = Ballot.N },
+            superseded: [ConflictKey.ForCountry("BRA", Ballot.Y)]);
+
+        var v = Classify("101", approved, (1, "101,79,2024-01-11,T,BRA,Brazil,Y,"));
+
+        Assert.Equal((RowClassification.Conflict, ConflictAction.AlreadySuperseded), (v.Rows[0].Classification, v.Rows[0].Action));
+    }
+
+    [Fact]
+    public void Title_replaced_by_an_approval_coming_again_from_the_same_file_opens_nothing()
+    {
+        var approved = Existing(79, "2024-01-11", "New title", new Dictionary<string, Ballot> { ["BRA"] = Ballot.Y },
+            superseded: [ConflictKey.ForField(VoteFields.Title, "Old title")]);
+
+        var v = Classify("101", approved, (1, "101,79,2024-01-11,Old title,BRA,Brazil,Y,"));
+
+        Assert.Equal(ConflictAction.AlreadySuperseded, Assert.Single(v.FieldConflicts).Action);
+    }
+
+    [Fact]
+    public void Value_superseded_from_another_file_is_still_a_new_conflict()
+    {
+        // The caller only passes values supplied by a file with the same sha256; any other file opens a conflict.
+        var approved = Existing(79, "2024-01-11", "T", new Dictionary<string, Ballot> { ["BRA"] = Ballot.N });
+
+        var v = Classify("101", approved, (1, "101,79,2024-01-11,T,BRA,Brazil,Y,"));
+
+        Assert.Equal(ConflictAction.Open, v.Rows[0].Action);
+    }
+
+    [Fact]
+    public void Pending_conflict_wins_over_a_superseded_value()
+    {
+        var key = ConflictKey.ForCountry("BRA", Ballot.Y);
+        var approved = Existing(79, "2024-01-11", "T", new Dictionary<string, Ballot> { ["BRA"] = Ballot.N },
+            pending: [key], superseded: [key]);
+
+        var v = Classify("101", approved, (1, "101,79,2024-01-11,T,BRA,Brazil,Y,"));
+
+        Assert.Equal(ConflictAction.AlreadyPending, v.Rows[0].Action);
+    }
+
+    [Fact]
     public void Pending_conflict_for_a_different_value_does_not_block_a_new_one()
     {
         var approved = Existing(79, "2024-01-11", "T", new Dictionary<string, Ballot> { ["BRA"] = Ballot.Y },

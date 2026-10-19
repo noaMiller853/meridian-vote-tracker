@@ -35,11 +35,13 @@ internal static class Ingest
         int session, string date, string title,
         IDictionary<string, Ballot> ballots,
         IEnumerable<ConflictKey>? pending = null,
-        IEnumerable<ConflictKey>? rejected = null) =>
+        IEnumerable<ConflictKey>? rejected = null,
+        IEnumerable<ConflictKey>? superseded = null) =>
         new(new VoteDetails(session, DateOnly.Parse(date, CultureInfo.InvariantCulture), title),
             new Dictionary<string, Ballot>(ballots),
             (pending ?? []).ToHashSet(),
-            (rejected ?? []).ToHashSet());
+            (rejected ?? []).ToHashSet(),
+            (superseded ?? []).ToHashSet());
 
     private static List<string> Split(string line)
     {

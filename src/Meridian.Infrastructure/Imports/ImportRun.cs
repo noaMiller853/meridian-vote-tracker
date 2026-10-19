@@ -562,8 +562,9 @@ internal sealed class ImportRun(ImportJob job, NpgsqlConnection connection, Npgs
         public Dictionary<string, (Ballot Ballot, long SourceImportId)> Ballots { get; } = [];
         public HashSet<ConflictKey> Pending { get; } = [];
         public HashSet<ConflictKey> Rejected { get; } = [];
+        public HashSet<ConflictKey> Superseded { get; } = [];
 
         public ExistingVote ToDomain() =>
-            new(details, Ballots.ToDictionary(b => b.Key, b => b.Value.Ballot), Pending, Rejected);
+            new(details, Ballots.ToDictionary(b => b.Key, b => b.Value.Ballot), Pending, Rejected, Superseded);
     }
 }

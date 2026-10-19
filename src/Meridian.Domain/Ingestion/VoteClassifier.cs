@@ -14,6 +14,12 @@ public enum ConflictAction
 
     /// <summary>The same proposal was already rejected from a file with the same sha256; nothing is opened.</summary>
     AlreadyRejected,
+
+    /// <summary>
+    /// The value was the approved value until a decision replaced it, and it comes again from a file with the same
+    /// sha256 as the one that supplied it; nothing is opened (ING-12).
+    /// </summary>
+    AlreadySuperseded,
 }
 
 /// <summary>Vote fields that can be in conflict; the values match conflicts.field_name.</summary>
@@ -31,12 +37,16 @@ public sealed record ConflictKey(string Kind, string Target, string ProposedValu
     public static ConflictKey ForField(string field, string proposed) => new("VoteField", field, proposed);
 }
 
-/// <summary>The approved state of a vote that already exists, plus its open and rejected proposals.</summary>
+/// <summary>
+/// The approved state of a vote that already exists, plus its open proposals and the decided ones that concern this
+/// file: proposals rejected from a file with the same sha256, and values from such a file that an approval replaced.
+/// </summary>
 public sealed record ExistingVote(
     VoteDetails Details,
     IReadOnlyDictionary<string, Ballot> Ballots,
     IReadOnlySet<ConflictKey> Pending,
-    IReadOnlySet<ConflictKey> RejectedFromSameFile);
+    IReadOnlySet<ConflictKey> RejectedFromSameFile,
+    IReadOnlySet<ConflictKey> SupersededFromSameFile);
 
 public sealed record RowOutcome(
     int LineNumber,
@@ -188,6 +198,7 @@ public static class VoteClassifier
     private static ConflictAction ActionFor(ConflictKey key, ExistingVote existing) =>
         existing.Pending.Contains(key) ? ConflictAction.AlreadyPending
         : existing.RejectedFromSameFile.Contains(key) ? ConflictAction.AlreadyRejected
+        : existing.SupersededFromSameFile.Contains(key) ? ConflictAction.AlreadySuperseded
         : ConflictAction.Open;
 
     /// <summary>For example: "vote details differ between rows: title 'X' on 147 rows (lines 3446, ... and 137 more); title 'X (draft)' on 1 row (line 3593)".</summary>
