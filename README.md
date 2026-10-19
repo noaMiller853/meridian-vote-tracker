@@ -49,7 +49,7 @@ dotnet ef migrations add <Name> --project src/Meridian.Infrastructure --startup-
 ```
 
 ## API
-Every `/api` request names the acting user in the `X-User` header (`Dana`, `Omar` or `Lena`; the UI's user switcher sends it). Without a known user the API answers 401. An optional `X-Correlation-Id` header is echoed back and follows the request into the logs and the audit trail. Errors are ProblemDetails. In Development the OpenAPI document is at `/openapi/v1.json`, and a Swagger UI on top of it is at `/swagger`: press **Authorize**, enter `Dana` as the `X-User` value, then use **POST /api/imports → Try it out** to upload a CSV from the browser. Neither the document nor the UI is served outside Development.
+Every `/api` request names the acting user in the `X-User` header (`Dana`, `Omar` or `Lena`; the UI's user switcher sends it). Without a known user the API answers 401. An optional `X-Correlation-Id` header is echoed back and follows the request into the logs and the audit trail. Errors are ProblemDetails (`application/problem+json`); validation errors are listed under the request field name. In Development the OpenAPI document is at `/openapi/v1.json`, and a Swagger UI on top of it is at `/swagger`: press **Authorize**, enter `Dana` as the `X-User` value, then use **POST /api/imports → Try it out** to upload a CSV from the browser. Neither the document nor the UI is served outside Development.
 
 | Method | Path | What it does |
 |---|---|---|
@@ -63,6 +63,10 @@ Every `/api` request names the acting user in the `X-User` header (`Dana`, `Omar
 | `GET` | `/api/conflicts` | The review queue: Pending by default (`status=Approved`, `Rejected` or `All`), `assemblyVoteId=`, `kind=CountryVote` or `VoteField`; paged with `afterId=` and `take` (max 500), with the total |
 | `GET` | `/api/conflicts/{id}` | One conflict: approved and new value side by side with the source of each (file, uploaded by, when), the approved value now (`current.isStale`) and the decision |
 | `POST` | `/api/conflicts/{id}/decision` | Analyst or Admin. `{"decision": "Approve" or "Reject", "note": "...", "expectedApprovedValue": "..."}`. 409 when the conflict was already decided (who, when, what) or, for Approve, when the approved value changed since it was opened (resend with `expectedApprovedValue` = the current value) |
+| `GET` | `/api/votes` | Votes by id: `assemblyVoteId=` (exact), `text=` (title or Assembly id), `session=`, `dateFrom=` / `dateTo=` (inclusive), `hasPosition=true` or `false`; paged with `afterId=` and `take` (max 500), with the total. A vote without a position has `hasPosition: false` and `position: null` (POS-04) |
+| `GET` | `/api/votes/{id}` | One vote: details with their source, country votes (source file and line, approved by, `changedByDecision`), position, pending conflicts |
+| `GET` | `/api/votes/{id}/timeline` | Everything that happened in the vote, oldest first: imports that contained it, vote created, countries added, conflicts opened and decided, values changed, position changes; with who, when, source file, previous and new value |
+| `PUT` | `/api/votes/{id}/position` | Admin only. `{"stance": "For" or "Against", "weight": 1-5, "expectedVersion": 0}`: send `0` for the first position, otherwise `position.version` as read. 409 with the current position if someone changed it since; the same values again return `changed: false` and record nothing |
 | `GET` | `/health` | Liveness, no user needed |
 
 ```
@@ -71,9 +75,12 @@ curl -H "X-User: Dana" http://localhost:5284/api/imports/2
 curl -H "X-User: Dana" "http://localhost:5284/api/imports/2/rows?class=Invalid"
 curl -H "X-User: Dana" "http://localhost:5284/api/conflicts?assemblyVoteId=MA/2024/009"
 curl -H "X-User: Omar" -H "Content-Type: application/json" -d "{\"decision\":\"Approve\",\"note\":\"Checked the sheet\"}" http://localhost:5284/api/conflicts/1/decision
+curl -H "X-User: Dana" "http://localhost:5284/api/votes?hasPosition=false&session=79"
+curl -H "X-User: Lena" -X PUT -H "Content-Type: application/json" -d "{\"stance\":\"For\",\"weight\":4,\"expectedVersion\":0}" http://localhost:5284/api/votes/1/position
+curl -H "X-User: Dana" http://localhost:5284/api/votes/1/timeline
 ```
 
-Line numbers in reports are lines in the file (the header is line 1). Recommended order for the provided files: q1, then rev2 (opens 6 ballot and 2 vote-field conflicts), then the historic file (about 90 s for 962,171 lines).
+Line numbers in reports are lines in the file (the header is line 1). Recommended order for the provided files: q1, then rev2 (opens 6 ballot and 2 vote-field conflicts), then the historic file (70 to 90 s for 962,171 lines).
 
 Uploaded files are kept in `FileStore:LocalRoot` (Development: `data/uploads` at the repository root, git-ignored), named by their sha256. Import settings: `Imports:PollSeconds`, `Imports:ProgressIntervalMs`, `Imports:CommandTimeoutSeconds`.
 
