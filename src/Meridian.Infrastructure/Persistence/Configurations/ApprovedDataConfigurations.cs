@@ -12,6 +12,7 @@ public class VoteConfiguration : IEntityTypeConfiguration<Vote>
         b.HasIndex(x => x.AssemblyVoteId).IsUnique().HasDatabaseName("ux_votes_assembly_vote_id");
         b.Property(x => x.CreatedAt).HasDefaultValueSql("now()");
         b.HasOne(x => x.FirstImport).WithMany().HasForeignKey(x => x.FirstImportId);
+        b.HasOne(x => x.SourceImport).WithMany().HasForeignKey(x => x.SourceImportId);
     }
 }
 

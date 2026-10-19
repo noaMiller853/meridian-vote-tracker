@@ -495,6 +495,10 @@ namespace Meridian.Infrastructure.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("classification");
 
+                    b.Property<string>("ConflictAction")
+                        .HasColumnType("text")
+                        .HasColumnName("conflict_action");
+
                     b.Property<string>("CountryCode")
                         .HasColumnType("text")
                         .HasColumnName("country_code");
@@ -502,6 +506,14 @@ namespace Meridian.Infrastructure.Persistence.Migrations
                     b.Property<string>("CountryName")
                         .HasColumnType("text")
                         .HasColumnName("country_name");
+
+                    b.Property<int>("FieldCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("field_count");
+
+                    b.Property<string>("Normalizations")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("normalizations");
 
                     b.Property<bool>("Normalized")
                         .HasColumnType("boolean")
@@ -514,6 +526,10 @@ namespace Meridian.Infrastructure.Persistence.Migrations
                     b.Property<string>("OriginalValue")
                         .HasColumnType("text")
                         .HasColumnName("original_value");
+
+                    b.Property<string>("Problems")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("problems");
 
                     b.Property<string>("PublishedAt")
                         .HasColumnType("text")
@@ -543,9 +559,100 @@ namespace Meridian.Infrastructure.Persistence.Migrations
                     b.HasKey("ImportId", "RowNumber")
                         .HasName("pk_import_rows");
 
+                    b.HasIndex("ImportId", "AssemblyVoteId", "RowNumber")
+                        .HasDatabaseName("ix_import_rows_import_vote");
+
+                    b.HasIndex("ImportId", "Classification", "RowNumber")
+                        .HasDatabaseName("ix_import_rows_import_class");
+
                     b.ToTable("import_rows", null, t =>
                         {
                             t.HasCheckConstraint("ck_import_rows_classification", "classification IN ('New', 'Unchanged', 'Duplicate', 'Invalid', 'Contradiction', 'Conflict')");
+
+                            t.HasCheckConstraint("ck_import_rows_conflict_action", "conflict_action IS NULL OR conflict_action IN ('Open', 'AlreadyPending', 'AlreadyRejected')");
+                        });
+                });
+
+            modelBuilder.Entity("Meridian.Infrastructure.Persistence.Entities.ImportVote", b =>
+                {
+                    b.Property<long>("ImportId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("import_id");
+
+                    b.Property<string>("AssemblyVoteId")
+                        .HasColumnType("text")
+                        .HasColumnName("assembly_vote_id");
+
+                    b.Property<int>("ConflictCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("conflict_count");
+
+                    b.Property<int>("ConflictsAlreadyPending")
+                        .HasColumnType("integer")
+                        .HasColumnName("conflicts_already_pending");
+
+                    b.Property<int>("ConflictsAlreadyRejected")
+                        .HasColumnType("integer")
+                        .HasColumnName("conflicts_already_rejected");
+
+                    b.Property<int>("ConflictsOpened")
+                        .HasColumnType("integer")
+                        .HasColumnName("conflicts_opened");
+
+                    b.Property<int>("ContradictionCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("contradiction_count");
+
+                    b.Property<string>("ContradictionReason")
+                        .HasColumnType("text")
+                        .HasColumnName("contradiction_reason");
+
+                    b.Property<int>("DuplicateCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("duplicate_count");
+
+                    b.Property<string>("FieldConflicts")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("field_conflicts");
+
+                    b.Property<int>("InvalidCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("invalid_count");
+
+                    b.Property<int>("NewCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("new_count");
+
+                    b.Property<int>("RowCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("row_count");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("status");
+
+                    b.Property<int>("UnchangedCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("unchanged_count");
+
+                    b.Property<bool>("VoteCreated")
+                        .HasColumnType("boolean")
+                        .HasColumnName("vote_created");
+
+                    b.Property<long?>("VoteId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("vote_id");
+
+                    b.HasKey("ImportId", "AssemblyVoteId")
+                        .HasName("pk_import_votes");
+
+                    b.HasIndex("VoteId")
+                        .HasDatabaseName("ix_import_votes_vote_id");
+
+                    b.ToTable("import_votes", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_import_votes_status", "status IN ('New', 'Existing', 'Contradiction', 'NoValidDetails')");
                         });
                 });
 
@@ -831,6 +938,10 @@ namespace Meridian.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("session");
 
+                    b.Property<long>("SourceImportId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("source_import_id");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasColumnType("text")
@@ -849,6 +960,9 @@ namespace Meridian.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("FirstImportId")
                         .HasDatabaseName("ix_votes_first_import_id");
+
+                    b.HasIndex("SourceImportId")
+                        .HasDatabaseName("ix_votes_source_import_id");
 
                     b.ToTable("votes", (string)null);
                 });
@@ -1047,6 +1161,26 @@ namespace Meridian.Infrastructure.Persistence.Migrations
                     b.Navigation("Import");
                 });
 
+            modelBuilder.Entity("Meridian.Infrastructure.Persistence.Entities.ImportVote", b =>
+                {
+                    b.HasOne("Meridian.Infrastructure.Persistence.Entities.Import", "Import")
+                        .WithMany()
+                        .HasForeignKey("ImportId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_import_votes_imports_import_id");
+
+                    b.HasOne("Meridian.Infrastructure.Persistence.Entities.Vote", "Vote")
+                        .WithMany()
+                        .HasForeignKey("VoteId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_import_votes_votes_vote_id");
+
+                    b.Navigation("Import");
+
+                    b.Navigation("Vote");
+                });
+
             modelBuilder.Entity("Meridian.Infrastructure.Persistence.Entities.Snapshot", b =>
                 {
                     b.HasOne("Meridian.Infrastructure.Persistence.Entities.BackgroundJob", "BackgroundJob")
@@ -1163,7 +1297,16 @@ namespace Meridian.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_votes_imports_first_import_id");
 
+                    b.HasOne("Meridian.Infrastructure.Persistence.Entities.Import", "SourceImport")
+                        .WithMany()
+                        .HasForeignKey("SourceImportId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_votes_imports_source_import_id");
+
                     b.Navigation("FirstImport");
+
+                    b.Navigation("SourceImport");
                 });
 
             modelBuilder.Entity("Meridian.Infrastructure.Persistence.Entities.VotePosition", b =>

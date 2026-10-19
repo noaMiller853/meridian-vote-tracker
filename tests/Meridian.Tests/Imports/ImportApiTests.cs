@@ -42,7 +42,7 @@ public sealed class ImportApiTests(PostgresFixture fixture)
         Assert.Equal("ui-req-42", response.Headers.GetValues("X-Correlation-Id").Single());
         await using var db = api.Db();
         Assert.Equal("ui-req-42", (await db.BackgroundJobs.SingleAsync(j => j.Id == created.JobId)).CorrelationId);
-        var audit = await db.AuditEvents.Where(a => a.ImportId == created.ImportId).OrderBy(a => a.Id)
+        var audit = await db.AuditEvents.Where(a => a.ImportId == created.ImportId && a.Entity == "import").OrderBy(a => a.Id)
             .Select(a => new { a.Action, Actor = a.Actor.Name, a.CorrelationId }).ToListAsync();
         Assert.Equal(
             [new { Action = "Uploaded", Actor = "Omar", CorrelationId = (string?)"ui-req-42" },

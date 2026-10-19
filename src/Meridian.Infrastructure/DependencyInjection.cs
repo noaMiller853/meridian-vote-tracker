@@ -41,7 +41,7 @@ public static class DependencyInjection
         services.Configure<ImportOptions>(configuration.GetSection("Imports"));
         services.AddSingleton<ImportSignal>();
         services.AddScoped<ImportService>();
-        services.AddScoped<IImportProcessor, HeaderAndCountProcessor>();
+        services.AddScoped<IImportProcessor, VoteImportProcessor>();
         services.AddHostedService<ImportWorker>();
 
         return services;

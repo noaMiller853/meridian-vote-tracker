@@ -41,9 +41,32 @@ public class ImportRowConfiguration : IEntityTypeConfiguration<ImportRow>
 {
     public void Configure(EntityTypeBuilder<ImportRow> b)
     {
-        b.ToTable("import_rows", t => t.HasCheckConstraint("ck_import_rows_classification",
-            "classification IN ('New', 'Unchanged', 'Duplicate', 'Invalid', 'Contradiction', 'Conflict')"));
+        b.ToTable("import_rows", t =>
+        {
+            t.HasCheckConstraint("ck_import_rows_classification",
+                "classification IN ('New', 'Unchanged', 'Duplicate', 'Invalid', 'Contradiction', 'Conflict')");
+            t.HasCheckConstraint("ck_import_rows_conflict_action",
+                "conflict_action IS NULL OR conflict_action IN ('Open', 'AlreadyPending', 'AlreadyRejected')");
+        });
         b.HasKey(x => new { x.ImportId, x.RowNumber });
+        b.Property(x => x.Problems).HasColumnType("jsonb");
+        b.Property(x => x.Normalizations).HasColumnType("jsonb");
+        // Report endpoints: rows of one class, and rows of one vote, both paged by line.
+        b.HasIndex(x => new { x.ImportId, x.Classification, x.RowNumber }).HasDatabaseName("ix_import_rows_import_class");
+        b.HasIndex(x => new { x.ImportId, x.AssemblyVoteId, x.RowNumber }).HasDatabaseName("ix_import_rows_import_vote");
         b.HasOne(x => x.Import).WithMany().HasForeignKey(x => x.ImportId);
+    }
+}
+
+public class ImportVoteConfiguration : IEntityTypeConfiguration<ImportVote>
+{
+    public void Configure(EntityTypeBuilder<ImportVote> b)
+    {
+        b.ToTable("import_votes", t => t.HasCheckConstraint("ck_import_votes_status",
+            "status IN ('New', 'Existing', 'Contradiction', 'NoValidDetails')"));
+        b.HasKey(x => new { x.ImportId, x.AssemblyVoteId });
+        b.Property(x => x.FieldConflicts).HasColumnType("jsonb");
+        b.HasOne(x => x.Import).WithMany().HasForeignKey(x => x.ImportId);
+        b.HasOne(x => x.Vote).WithMany().HasForeignKey(x => x.VoteId);
     }
 }

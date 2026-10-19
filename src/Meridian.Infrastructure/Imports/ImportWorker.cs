@@ -139,7 +139,7 @@ public sealed class ImportWorker(
 
             await using (var done = new NpgsqlCommand("""
                 UPDATE background_jobs
-                SET status = 'Succeeded', phase = NULL, done = $2, total = $2, finished_at = now()
+                SET status = 'Succeeded', phase = NULL, done = $2, total = $2, finished_at = clock_timestamp() -- now() would be the start of the work transaction
                 WHERE id = $1
                 """, connection, tx) { CommandTimeout = Options.CommandTimeoutSeconds })
             {

@@ -30,9 +30,9 @@ public class SchemaConstraintTests(PostgresFixture fixture) : IAsyncLifetime
                 VALUES (1, 'q1.csv', 'local://q1.csv', repeat('a', 64), 1, 1, 0, 0, 0, 0, 2, 0);
             INSERT INTO import_rows (import_id, row_number, raw_line, normalized, classification)
                 VALUES (1, 1, 'r1', false, 'New'), (1, 2, 'r2', false, 'Conflict'), (1, 3, 'r3', false, 'Conflict');
-            INSERT INTO votes (id, assembly_vote_id, session, vote_date, title, first_import_id)
+            INSERT INTO votes (id, assembly_vote_id, session, vote_date, title, first_import_id, source_import_id)
                 OVERRIDING SYSTEM VALUE
-                VALUES (1, 'MA/2024/001', 79, '2024-01-12', 'Desertification', 1);
+                VALUES (1, 'MA/2024/001', 79, '2024-01-12', 'Desertification', 1, 1);
             INSERT INTO country_votes (vote_id, country_code, ballot, source_import_id, source_row_number, approved_by_id, approved_at)
                 VALUES (1, 'FRA', 'Y', 1, 1, 1, now());
             """);
@@ -90,8 +90,8 @@ public class SchemaConstraintTests(PostgresFixture fixture) : IAsyncLifetime
     public async Task Duplicate_assembly_vote_id_is_rejected()
     {
         var ex = await Fails("""
-            INSERT INTO votes (id, assembly_vote_id, session, vote_date, title, first_import_id) OVERRIDING SYSTEM VALUE
-            VALUES (2, 'MA/2024/001', 79, '2024-01-12', 'Again', 1);
+            INSERT INTO votes (id, assembly_vote_id, session, vote_date, title, first_import_id, source_import_id) OVERRIDING SYSTEM VALUE
+            VALUES (2, 'MA/2024/001', 79, '2024-01-12', 'Again', 1, 1);
             """);
 
         Assert.Equal(UniqueViolation, ex.SqlState);

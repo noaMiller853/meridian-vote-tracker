@@ -35,5 +35,17 @@ public class ImportRow
     /// <summary>The value the reason refers to, as found in the file.</summary>
     public string? OriginalValue { get; set; }
 
+    /// <summary>Number of columns found on the line (0 when the line could not be split).</summary>
+    public int FieldCount { get; set; }
+
+    /// <summary>Every problem of an Invalid row (jsonb array of {code, field, message, originalValue}).</summary>
+    public string? Problems { get; set; }
+
+    /// <summary>Every allowed normalization applied to the row (jsonb array of {field, original, normalized}).</summary>
+    public string? Normalizations { get; set; }
+
+    /// <summary>For Conflict rows: Open, AlreadyPending or AlreadyRejected.</summary>
+    public string? ConflictAction { get; set; }
+
     public Import Import { get; set; } = null!;
 }

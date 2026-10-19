@@ -11,6 +11,7 @@ public class MeridianDbContext(DbContextOptions<MeridianDbContext> options) : Db
     public DbSet<BackgroundJob> BackgroundJobs => Set<BackgroundJob>();
     public DbSet<Import> Imports => Set<Import>();
     public DbSet<ImportRow> ImportRows => Set<ImportRow>();
+    public DbSet<ImportVote> ImportVotes => Set<ImportVote>();
     public DbSet<Vote> Votes => Set<Vote>();
     public DbSet<CountryVote> CountryVotes => Set<CountryVote>();
     public DbSet<VotePosition> VotePositions => Set<VotePosition>();
