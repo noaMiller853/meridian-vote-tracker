@@ -1017,6 +1017,12 @@ namespace Meridian.Infrastructure.Persistence.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("set_by_id");
 
+                    b.Property<int>("Version")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("version");
+
                     b.Property<short>("Weight")
                         .HasColumnType("smallint")
                         .HasColumnName("weight");
@@ -1030,6 +1036,8 @@ namespace Meridian.Infrastructure.Persistence.Migrations
                     b.ToTable("vote_positions", null, t =>
                         {
                             t.HasCheckConstraint("ck_vote_positions_desired_outcome", "desired_outcome IN ('Y', 'N')");
+
+                            t.HasCheckConstraint("ck_vote_positions_version", "version >= 1");
 
                             t.HasCheckConstraint("ck_vote_positions_weight", "weight BETWEEN 1 AND 5");
                         });

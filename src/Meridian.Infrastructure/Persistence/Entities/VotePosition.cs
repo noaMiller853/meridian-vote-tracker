@@ -13,6 +13,12 @@ public class VotePosition
     public long SetById { get; set; }
     public DateTimeOffset SetAt { get; set; }
 
+    /// <summary>
+    /// 1 when first set, +1 on every change. A change must name the version it was based on, so two admins never
+    /// overwrite each other silently (DECISIONS §11). 0 in a request means "the vote has no position yet".
+    /// </summary>
+    public int Version { get; set; }
+
     public Vote Vote { get; set; } = null!;
     public User SetBy { get; set; } = null!;
 }

@@ -40,7 +40,9 @@ public class VotePositionConfiguration : IEntityTypeConfiguration<VotePosition>
         {
             t.HasCheckConstraint("ck_vote_positions_desired_outcome", "desired_outcome IN ('Y', 'N')");
             t.HasCheckConstraint("ck_vote_positions_weight", "weight BETWEEN 1 AND 5");
+            t.HasCheckConstraint("ck_vote_positions_version", "version >= 1");
         });
+        b.Property(x => x.Version).HasDefaultValue(1);
         b.HasKey(x => x.VoteId);
         b.HasOne(x => x.Vote).WithOne(v => v.Position).HasForeignKey<VotePosition>(x => x.VoteId);
         b.HasOne(x => x.SetBy).WithMany().HasForeignKey(x => x.SetById);
