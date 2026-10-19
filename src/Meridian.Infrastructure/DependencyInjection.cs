@@ -1,4 +1,5 @@
 using Meridian.Infrastructure.Persistence;
+using Meridian.Infrastructure.Startup;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -20,6 +21,11 @@ public static class DependencyInjection
         services.AddDbContext<MeridianDbContext>(options => options
             .UseNpgsql(connectionString)
             .UseSnakeCaseNamingConvention());
+
+        services.Configure<DatabaseOptions>(configuration.GetSection("Database"));
+        services.Configure<SeedOptions>(configuration.GetSection("Seed"));
+        services.AddScoped<DatabaseInitializer>();
+        services.AddHostedService<DatabaseInitializerService>();
 
         return services;
     }

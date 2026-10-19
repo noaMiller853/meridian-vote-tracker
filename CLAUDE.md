@@ -15,6 +15,7 @@ ASP.NET Core (.NET 8+), EF Core + Npgsql, PostgreSQL (Docker), Angular, OpenAPI,
 - `docker compose up` : whole system
 - `dotnet build` / `dotnet test`
 - `dotnet tool restore`, then `dotnet ef database update --project src/Meridian.Infrastructure --startup-project src/Meridian.Api` (connection string from user-secrets or `ConnectionStrings__Default`)
+- `dotnet run --project src/Meridian.Api`: in Development, migrates and seeds on startup (`Database:MigrateOnStartup`, `Seed:MemberStatesPath`)
 - New migration: `dotnet ef migrations add <Name> --project src/Meridian.Infrastructure --startup-project src/Meridian.Api --output-dir Persistence/Migrations`
 - `ng serve` (inside `src/web`)
 

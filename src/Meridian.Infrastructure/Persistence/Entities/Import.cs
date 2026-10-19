@@ -2,7 +2,14 @@ namespace Meridian.Infrastructure.Persistence.Entities;
 
 public class Import
 {
+    public const string KindVotes = "Votes";
+    public const string KindMemberStates = "MemberStates";
+
     public long Id { get; set; }
+
+    /// <summary>Votes (Assembly export) or MemberStates (seed file, shown as "member_states.csv (seed)").</summary>
+    public string Kind { get; set; } = KindVotes;
+
     public string FileName { get; set; } = null!;
     public string StorageUri { get; set; } = null!;
     public string Sha256 { get; set; } = null!;

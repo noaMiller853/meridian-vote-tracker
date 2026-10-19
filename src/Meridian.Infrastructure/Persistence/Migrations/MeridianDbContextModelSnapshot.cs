@@ -399,6 +399,13 @@ namespace Meridian.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("invalid_count");
 
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text")
+                        .HasDefaultValue("Votes")
+                        .HasColumnName("kind");
+
                     b.Property<int>("NewCount")
                         .HasColumnType("integer")
                         .HasColumnName("new_count");
@@ -445,14 +452,16 @@ namespace Meridian.Infrastructure.Persistence.Migrations
                     b.HasIndex("BackgroundJobId")
                         .HasDatabaseName("ix_imports_background_job_id");
 
-                    b.HasIndex("Sha256")
-                        .HasDatabaseName("ix_imports_sha256");
-
                     b.HasIndex("UploadedById")
                         .HasDatabaseName("ix_imports_uploaded_by_id");
 
+                    b.HasIndex("Kind", "Sha256")
+                        .HasDatabaseName("ix_imports_kind_sha256");
+
                     b.ToTable("imports", null, t =>
                         {
+                            t.HasCheckConstraint("ck_imports_kind", "kind IN ('Votes', 'MemberStates')");
+
                             t.HasCheckConstraint("ck_imports_sha256", "sha256 ~ '^[0-9a-f]{64}$'");
                         });
                 });

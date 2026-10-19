@@ -21,11 +21,16 @@ public class ImportConfiguration : IEntityTypeConfiguration<Import>
 {
     public void Configure(EntityTypeBuilder<Import> b)
     {
-        b.ToTable("imports", t => t.HasCheckConstraint("ck_imports_sha256", "sha256 ~ '^[0-9a-f]{64}$'"));
+        b.ToTable("imports", t =>
+        {
+            t.HasCheckConstraint("ck_imports_sha256", "sha256 ~ '^[0-9a-f]{64}$'");
+            t.HasCheckConstraint("ck_imports_kind", "kind IN ('Votes', 'MemberStates')");
+        });
+        b.Property(x => x.Kind).HasDefaultValue(Import.KindVotes);
         b.Property(x => x.UploadedAt).HasDefaultValueSql("now()");
         b.Property(x => x.Report).HasColumnType("jsonb");
         // Not unique: re-uploading the same file is allowed and must be a no-op (ING-12), not an error.
-        b.HasIndex(x => x.Sha256);
+        b.HasIndex(x => new { x.Kind, x.Sha256 });
         b.HasOne(x => x.UploadedBy).WithMany().HasForeignKey(x => x.UploadedById);
         b.HasOne(x => x.BackgroundJob).WithMany().HasForeignKey(x => x.BackgroundJobId);
     }

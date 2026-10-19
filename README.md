@@ -13,7 +13,7 @@ Stack: ASP.NET Core, PostgreSQL, Angular, Docker Compose.
 ## Run
 1. Optional: copy `.env.example` to `.env`.
 2. Start the database: `docker compose up -d db`
-3. Apply migrations (see Database setup) and start the API: `dotnet run --project src/Meridian.Api`
+3. Start the API (applies migrations and seed data in Development, see Database setup): `dotnet run --project src/Meridian.Api`
 4. Start the web app: `cd src/web && ng serve`
 
 TODO: replace steps 2 to 4 with a single `docker compose up` once the API and web services are in the compose file.
@@ -28,10 +28,20 @@ The API reads the connection string `ConnectionStrings:Default` from configurati
    dotnet user-secrets set "ConnectionStrings:Default" "Host=localhost;Port=5432;Database=meridian;Username=meridian;Password=<password>" --project src/Meridian.Api
    ```
    ASP.NET Core does not read `.env` itself. In Docker, CI or Azure, set the environment variable `ConnectionStrings__Default` instead.
-4. Apply the migrations:
+4. Start the API: `dotnet run --project src/Meridian.Api`. In Development it applies migrations and loads the seed data by itself (see Startup). Without that, apply the migrations by hand:
    ```
    dotnet ef database update --project src/Meridian.Infrastructure --startup-project src/Meridian.Api
    ```
+
+### Startup
+Before the API accepts requests it:
+1. applies pending migrations when `Database:MigrateOnStartup` is `true` (Development and docker compose). When it is `false` and migrations are pending, the API refuses to start;
+2. adds the users Dana, Omar and Lena if they are missing (`system` comes from the first migration);
+3. loads `Seed:MemberStatesPath` (Development: `../../seed/member_states.csv`, relative to `src/Meridian.Api`) into `countries` and `country_memberships`.
+
+The seed load is idempotent. The file's sha256 is recorded as an import by `system` (shown as `member_states.csv (seed)`), and the same file is never loaded twice. A changed file only adds missing countries and periods; nothing is deleted or overwritten. Overlapping periods, `member_to` before `member_from`, or a period that clashes with one already stored stop the API with a message that names the lines.
+
+If `Seed:MemberStatesPath` is empty the load is skipped, but the API refuses to start while the database has no countries. In environment variables the settings are `Database__MigrateOnStartup` and `Seed__MemberStatesPath`.
 
 Add a migration after a model change:
 ```
@@ -42,8 +52,8 @@ dotnet ef migrations add <Name> --project src/Meridian.Infrastructure --startup-
 `dotnet test`. Integration tests start a real PostgreSQL through Testcontainers, so Docker must be running.
 
 ## Seed data
-- Countries and membership periods: `seed/member_states.csv`, loaded on startup.
-- Users: Dana (Analyst), Omar (Analyst), Lena (Admin). Switch user from the menu at the top of the screen.
+- Countries and membership periods: `seed/member_states.csv` (150 countries, 151 periods; Iceland left and came back, so it has two), loaded on startup.
+- Users: Dana (Analyst), Omar (Analyst), Lena (Admin), added on startup. Switch user from the menu at the top of the screen.
 
 ## Configuration and secrets
 No secrets in the repository. Local values live in `.env` or `dotnet user-secrets`. Azure resources are connected through configuration only (see `.env.example`).
