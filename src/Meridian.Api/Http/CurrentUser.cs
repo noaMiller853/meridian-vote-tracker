@@ -15,6 +15,9 @@ public sealed class CurrentUser
     /// <summary>Spec section 3: analysts decide conflicts; the admin may too.</summary>
     public bool CanDecideConflicts => Role is "Analyst" or "Admin";
 
+    /// <summary>POS-01: only the admin sets positions and weights.</summary>
+    public bool CanSetPositions => Role is "Admin";
+
     internal void Set(long id, string name, string role) => (Id, Name, Role) = (id, name, role);
 }
 

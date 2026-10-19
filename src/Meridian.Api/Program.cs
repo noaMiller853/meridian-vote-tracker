@@ -6,7 +6,8 @@ var builder = WebApplication.CreateBuilder(args);
 // One error format for the whole API (ProblemDetails), with the correlation id in every error.
 builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = context =>
     context.ProblemDetails.Extensions["correlationId"] = context.HttpContext.GetCorrelationId());
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .ConfigureApiBehaviorOptions(options => options.InvalidModelStateResponseFactory = FieldErrors.InvalidModelState);
 builder.Services.AddOpenApi(options => options.AddDocumentTransformer<UserHeaderSecurityScheme>());
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddScoped<CurrentUser>();

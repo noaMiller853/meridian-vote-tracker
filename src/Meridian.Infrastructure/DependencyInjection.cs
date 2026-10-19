@@ -2,6 +2,7 @@ using Meridian.Infrastructure.Files;
 using Meridian.Infrastructure.Imports;
 using Meridian.Infrastructure.Persistence;
 using Meridian.Infrastructure.Review;
+using Meridian.Infrastructure.Votes;
 using Meridian.Infrastructure.Startup;
 using Npgsql;
 using Microsoft.EntityFrameworkCore;
@@ -47,6 +48,9 @@ public static class DependencyInjection
 
         services.AddScoped<ConflictReader>();
         services.AddScoped<ConflictDecisionService>();
+
+        services.AddScoped<VoteReader>();
+        services.AddScoped<PositionService>();
 
         return services;
     }
