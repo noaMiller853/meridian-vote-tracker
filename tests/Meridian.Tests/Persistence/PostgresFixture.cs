@@ -16,11 +16,7 @@ public sealed class PostgresFixture : IAsyncLifetime
     {
         await _container.StartAsync();
 
-        var options = new DbContextOptionsBuilder<MeridianDbContext>()
-            .UseNpgsql(ConnectionString)
-            .UseSnakeCaseNamingConvention()
-            .Options;
-        await using var db = new MeridianDbContext(options);
+        await using var db = CreateContext(ConnectionString);
         await db.Database.MigrateAsync();
     }
 
@@ -32,6 +28,23 @@ public sealed class PostgresFixture : IAsyncLifetime
         await connection.OpenAsync();
         return connection;
     }
+
+    /// <summary>Creates an empty database (no migrations applied) in the same container and returns its connection string.</summary>
+    public async Task<string> CreateEmptyDatabaseAsync()
+    {
+        var name = $"t_{Guid.NewGuid():N}";
+        await using (var connection = await OpenAsync())
+        await using (var cmd = new NpgsqlCommand($"CREATE DATABASE {name}", connection))
+            await cmd.ExecuteNonQueryAsync();
+
+        return new NpgsqlConnectionStringBuilder(ConnectionString) { Database = name }.ConnectionString;
+    }
+
+    public static MeridianDbContext CreateContext(string connectionString) => new(
+        new DbContextOptionsBuilder<MeridianDbContext>()
+            .UseNpgsql(connectionString)
+            .UseSnakeCaseNamingConvention()
+            .Options);
 }
 
 [CollectionDefinition(Name)]
