@@ -29,9 +29,19 @@ public class Conflict
     public DateTimeOffset? DecidedAt { get; set; }
     public string? DecisionNote { get; set; }
 
+    /// <summary>
+    /// Set only when Approved: the value the approval replaced and the import that had supplied it. Equal to the approved
+    /// value and source unless the conflict was stale and approved on purpose (DECISIONS §5). Re-uploading that file
+    /// opens nothing for this value (AlreadySuperseded, ING-12).
+    /// </summary>
+    public string? ReplacedValue { get; set; }
+
+    public long? ReplacedSourceImportId { get; set; }
+
     public Vote Vote { get; set; } = null!;
     public Country? Country { get; set; }
     public Import ApprovedSourceImport { get; set; } = null!;
     public ImportRow ProposedSourceRow { get; set; } = null!;
     public User? DecidedBy { get; set; }
+    public Import? ReplacedSourceImport { get; set; }
 }

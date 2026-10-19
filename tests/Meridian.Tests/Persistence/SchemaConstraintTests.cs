@@ -30,9 +30,9 @@ public class SchemaConstraintTests(PostgresFixture fixture) : IAsyncLifetime
                 VALUES (1, 'q1.csv', 'local://q1.csv', repeat('a', 64), 1, 1, 0, 0, 0, 0, 2, 0);
             INSERT INTO import_rows (import_id, row_number, raw_line, normalized, classification)
                 VALUES (1, 1, 'r1', false, 'New'), (1, 2, 'r2', false, 'Conflict'), (1, 3, 'r3', false, 'Conflict');
-            INSERT INTO votes (id, assembly_vote_id, session, vote_date, title, first_import_id, source_import_id)
+            INSERT INTO votes (id, assembly_vote_id, session, vote_date, title, first_import_id, session_source_import_id, vote_date_source_import_id, title_source_import_id)
                 OVERRIDING SYSTEM VALUE
-                VALUES (1, 'MA/2024/001', 79, '2024-01-12', 'Desertification', 1, 1);
+                VALUES (1, 'MA/2024/001', 79, '2024-01-12', 'Desertification', 1, 1, 1, 1);
             INSERT INTO country_votes (vote_id, country_code, ballot, source_import_id, source_row_number, approved_by_id, approved_at)
                 VALUES (1, 'FRA', 'Y', 1, 1, 1, now());
             """);
@@ -90,8 +90,8 @@ public class SchemaConstraintTests(PostgresFixture fixture) : IAsyncLifetime
     public async Task Duplicate_assembly_vote_id_is_rejected()
     {
         var ex = await Fails("""
-            INSERT INTO votes (id, assembly_vote_id, session, vote_date, title, first_import_id, source_import_id) OVERRIDING SYSTEM VALUE
-            VALUES (2, 'MA/2024/001', 79, '2024-01-12', 'Again', 1, 1);
+            INSERT INTO votes (id, assembly_vote_id, session, vote_date, title, first_import_id, session_source_import_id, vote_date_source_import_id, title_source_import_id) OVERRIDING SYSTEM VALUE
+            VALUES (2, 'MA/2024/001', 79, '2024-01-12', 'Again', 1, 1, 1, 1);
             """);
 
         Assert.Equal(UniqueViolation, ex.SqlState);
@@ -180,6 +180,36 @@ public class SchemaConstraintTests(PostgresFixture fixture) : IAsyncLifetime
         Assert.Equal(CheckViolation, ex.SqlState);
         Assert.Equal("ck_conflicts_decision", ex.ConstraintName);
     }
+
+    [Fact]
+    public async Task Approved_conflict_without_the_replaced_value_is_rejected()
+    {
+        var id = await InsertCountryVoteConflict("A", "Pending", row: 2);
+
+        var ex = await Fails($"UPDATE conflicts SET status = 'Approved', decided_by_id = 1, decided_at = now() WHERE id = {id};");
+
+        Assert.Equal(CheckViolation, ex.SqlState);
+        Assert.Equal("ck_conflicts_replaced", ex.ConstraintName);
+    }
+
+    [Fact]
+    public async Task Rejected_conflict_with_a_replaced_value_is_rejected()
+    {
+        var id = await InsertCountryVoteConflict("A", "Pending", row: 2);
+
+        var ex = await Fails($"""
+            UPDATE conflicts SET status = 'Rejected', decided_by_id = 1, decided_at = now(),
+                                 replaced_value = 'Y', replaced_source_import_id = 1
+            WHERE id = {id};
+            """);
+
+        Assert.Equal(CheckViolation, ex.SqlState);
+        Assert.Equal("ck_conflicts_replaced", ex.ConstraintName);
+    }
+
+    [Fact]
+    public async Task Import_row_may_have_the_conflict_action_AlreadySuperseded() =>
+        await Exec("UPDATE import_rows SET conflict_action = 'AlreadySuperseded' WHERE import_id = 1 AND row_number = 2;");
 
     [Theory]
     [InlineData("2010-01-01", "2012-12-31")]  // inside the closed period
@@ -292,8 +322,15 @@ public class SchemaConstraintTests(PostgresFixture fixture) : IAsyncLifetime
         RETURNING id;
         """);
 
-    private Task Decide(long conflictId, string status) =>
-        Exec($"UPDATE conflicts SET status = '{status}', decided_by_id = 1, decided_at = now() WHERE id = {conflictId} AND status = 'Pending';");
+    private Task Decide(long conflictId, string status)
+    {
+        var replaced = status == "Approved" ? "approved_value, approved_source_import_id" : "NULL, NULL";
+        return Exec($"""
+            UPDATE conflicts SET status = '{status}', decided_by_id = 1, decided_at = now(),
+                                 (replaced_value, replaced_source_import_id) = ROW({replaced})
+            WHERE id = {conflictId} AND status = 'Pending';
+            """);
+    }
 
     private Task<long> InsertSnapshot(string status, string quarterSql)
     {

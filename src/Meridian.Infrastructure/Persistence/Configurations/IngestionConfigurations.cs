@@ -46,7 +46,7 @@ public class ImportRowConfiguration : IEntityTypeConfiguration<ImportRow>
             t.HasCheckConstraint("ck_import_rows_classification",
                 "classification IN ('New', 'Unchanged', 'Duplicate', 'Invalid', 'Contradiction', 'Conflict')");
             t.HasCheckConstraint("ck_import_rows_conflict_action",
-                "conflict_action IS NULL OR conflict_action IN ('Open', 'AlreadyPending', 'AlreadyRejected')");
+                "conflict_action IS NULL OR conflict_action IN ('Open', 'AlreadyPending', 'AlreadyRejected', 'AlreadySuperseded')");
         });
         b.HasKey(x => new { x.ImportId, x.RowNumber });
         b.Property(x => x.Problems).HasColumnType("jsonb");

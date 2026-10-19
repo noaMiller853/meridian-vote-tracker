@@ -111,7 +111,7 @@ internal sealed class ImportRun(ImportJob job, NpgsqlConnection connection, Npgs
         Count(rowWrites, plans, opened);
     }
 
-    /// <summary>The batch query: approved data of the votes in this batch, in one round trip (four result sets).</summary>
+    /// <summary>The batch query: approved data of the votes in this batch, in one round trip (five result sets).</summary>
     private async Task<Dictionary<string, ApprovedVote>> LoadApprovedAsync(string[] voteIds, CancellationToken ct)
     {
         var result = new Dictionary<string, ApprovedVote>();
@@ -120,7 +120,8 @@ internal sealed class ImportRun(ImportJob job, NpgsqlConnection connection, Npgs
 
         await using var batch = new NpgsqlBatch(Connection, transaction) { Timeout = timeoutSeconds };
         batch.BatchCommands.Add(Batch("""
-            SELECT v.id, v.assembly_vote_id, v.session, v.vote_date, v.title, v.source_import_id
+            SELECT v.id, v.assembly_vote_id, v.session, v.vote_date, v.title,
+                   v.session_source_import_id, v.vote_date_source_import_id, v.title_source_import_id
             FROM votes v
             WHERE v.assembly_vote_id = ANY($1)
             """, voteIds));
@@ -146,13 +147,29 @@ internal sealed class ImportRun(ImportJob job, NpgsqlConnection connection, Npgs
             """, voteIds);
         rejected.Parameters.Add(new() { Value = Job.Sha256 });
         batch.BatchCommands.Add(rejected);
+        // Values an approval replaced that came from a file with the same sha256 (AlreadySuperseded, ING-12).
+        var superseded = Batch("""
+            SELECT v.assembly_vote_id, c.kind, COALESCE(c.country_code, c.field_name) AS target, c.replaced_value
+            FROM conflicts c
+            JOIN votes v   ON v.id = c.vote_id
+            JOIN imports i ON i.id = c.replaced_source_import_id
+            WHERE v.assembly_vote_id = ANY($1) AND c.status = 'Approved'
+              AND i.kind = 'Votes' AND i.sha256 = $2
+            """, voteIds);
+        superseded.Parameters.Add(new() { Value = Job.Sha256 });
+        batch.BatchCommands.Add(superseded);
 
         await using var reader = await batch.ExecuteReaderAsync(ct);
         while (await reader.ReadAsync(ct))
             result[reader.GetString(1)] = new ApprovedVote(
                 reader.GetInt64(0),
                 new VoteDetails(reader.GetInt32(2), reader.GetFieldValue<DateOnly>(3), reader.GetString(4)),
-                reader.GetInt64(5));
+                new Dictionary<string, long>
+                {
+                    [VoteFields.Session] = reader.GetInt64(5),
+                    [VoteFields.VoteDate] = reader.GetInt64(6),
+                    [VoteFields.Title] = reader.GetInt64(7),
+                });
 
         await reader.NextResultAsync(ct);
         while (await reader.ReadAsync(ct))
@@ -165,6 +182,10 @@ internal sealed class ImportRun(ImportJob job, NpgsqlConnection connection, Npgs
         await reader.NextResultAsync(ct);
         while (await reader.ReadAsync(ct))
             result[reader.GetString(0)].Rejected.Add(new ConflictKey(reader.GetString(1), reader.GetString(2), reader.GetString(3)));
+
+        await reader.NextResultAsync(ct);
+        while (await reader.ReadAsync(ct))
+            result[reader.GetString(0)].Superseded.Add(new ConflictKey(reader.GetString(1), reader.GetString(2), reader.GetString(3)));
 
         return result;
 
@@ -218,8 +239,9 @@ internal sealed class ImportRun(ImportJob job, NpgsqlConnection connection, Npgs
             return ids;
 
         await using var cmd = Command("""
-            INSERT INTO votes (assembly_vote_id, session, vote_date, title, first_import_id, source_import_id, created_at)
-            SELECT v, s, d, t, $5, $5, now()
+            INSERT INTO votes (assembly_vote_id, session, vote_date, title, first_import_id,
+                               session_source_import_id, vote_date_source_import_id, title_source_import_id, created_at)
+            SELECT v, s, d, t, $5, $5, $5, $5, now()
             FROM unnest($1::text[], $2::int[], $3::date[], $4::text[]) AS x(v, s, d, t)
             ON CONFLICT (assembly_vote_id) DO NOTHING
             RETURNING id, assembly_vote_id
@@ -274,7 +296,7 @@ internal sealed class ImportRun(ImportJob job, NpgsqlConnection connection, Npgs
                 rows.Add((plan.VoteId!.Value, "CountryVote", r.CountryCode, null, approvedBallot.ToString(), r.Ballot!.Value.ToString(), source, r.LineNumber));
             }
             foreach (var f in plan.Result.FieldConflicts.Where(f => f.Action == ConflictAction.Open))
-                rows.Add((plan.VoteId!.Value, "VoteField", null, f.Field, f.ApprovedValue, f.ProposedValue, plan.Existing!.SourceImportId, plan.FirstDetailsLine));
+                rows.Add((plan.VoteId!.Value, "VoteField", null, f.Field, f.ApprovedValue, f.ProposedValue, plan.Existing!.FieldSources[f.Field], plan.FirstDetailsLine));
         }
 
         var opened = new List<OpenedConflict>();
@@ -312,7 +334,8 @@ internal sealed class ImportRun(ImportJob job, NpgsqlConnection connection, Npgs
         await using var copy = await Connection.BeginBinaryImportAsync("""
             COPY import_votes (import_id, assembly_vote_id, vote_id, status, vote_created, row_count, new_count, unchanged_count,
                                duplicate_count, invalid_count, contradiction_count, conflict_count, conflicts_opened,
-                               conflicts_already_pending, conflicts_already_rejected, field_conflicts, contradiction_reason)
+                               conflicts_already_pending, conflicts_already_rejected, conflicts_already_superseded,
+                               field_conflicts, contradiction_reason)
             FROM STDIN (FORMAT BINARY)
             """, ct);
         copy.Timeout = Timeout;
@@ -335,6 +358,7 @@ internal sealed class ImportRun(ImportJob job, NpgsqlConnection connection, Npgs
             await copy.WriteAsync(plan.VoteId is { } id ? openedByVote.GetValueOrDefault(id) : 0, NpgsqlDbType.Integer, ct);
             await copy.WriteAsync(Actions(ConflictAction.AlreadyPending), NpgsqlDbType.Integer, ct);
             await copy.WriteAsync(Actions(ConflictAction.AlreadyRejected), NpgsqlDbType.Integer, ct);
+            await copy.WriteAsync(Actions(ConflictAction.AlreadySuperseded), NpgsqlDbType.Integer, ct);
             await Copy.Json(copy, plan.Result.FieldConflicts.Count > 0 ? JsonSerializer.Serialize(plan.Result.FieldConflicts, Json) : null, ct);
             await Copy.Text(copy, plan.Result.ContradictionReason, ct);
         }
@@ -412,7 +436,7 @@ internal sealed class ImportRun(ImportJob job, NpgsqlConnection connection, Npgs
             _votesByStatus[plan.Result.Status].Add(plan.Key);
             if (plan.Result.Status == VoteStatus.New)
                 _votesCreated++;
-            foreach (var r in plan.Result.Rows.Where(r => r.Action is ConflictAction.AlreadyPending or ConflictAction.AlreadyRejected))
+            foreach (var r in plan.Result.Rows.Where(r => r.Action is not null and not ConflictAction.Open))
                 Add("CountryVote", r.Action!.Value);
             foreach (var f in plan.Result.FieldConflicts.Where(f => f.Action != ConflictAction.Open))
                 Add("VoteField", f.Action);
@@ -436,6 +460,7 @@ internal sealed class ImportRun(ImportJob job, NpgsqlConnection connection, Npgs
         var opened = Conflicts(ConflictAction.Open);
         var pending = Conflicts(ConflictAction.AlreadyPending);
         var rejected = Conflicts(ConflictAction.AlreadyRejected);
+        var superseded = Conflicts(ConflictAction.AlreadySuperseded);
 
         var report = new
         {
@@ -455,21 +480,24 @@ internal sealed class ImportRun(ImportJob job, NpgsqlConnection connection, Npgs
             },
             conflicts = new
             {
-                summary = $"new conflicts opened: {opened} ({pending} already waiting for a decision, {rejected} already rejected)",
+                summary = $"new conflicts opened: {opened} ({pending} already waiting for a decision, {rejected} already rejected, {superseded} already superseded)",
                 opened,
                 alreadyPending = pending,
                 alreadyRejected = rejected,
+                alreadySuperseded = superseded,
                 ballot = new
                 {
                     opened = Conflicts(ConflictAction.Open, "CountryVote"),
                     alreadyPending = Conflicts(ConflictAction.AlreadyPending, "CountryVote"),
                     alreadyRejected = Conflicts(ConflictAction.AlreadyRejected, "CountryVote"),
+                    alreadySuperseded = Conflicts(ConflictAction.AlreadySuperseded, "CountryVote"),
                 },
                 voteField = new
                 {
                     opened = Conflicts(ConflictAction.Open, "VoteField"),
                     alreadyPending = Conflicts(ConflictAction.AlreadyPending, "VoteField"),
                     alreadyRejected = Conflicts(ConflictAction.AlreadyRejected, "VoteField"),
+                    alreadySuperseded = Conflicts(ConflictAction.AlreadySuperseded, "VoteField"),
                 },
             },
             normalizations = new
@@ -555,10 +583,12 @@ internal sealed class ImportRun(ImportJob job, NpgsqlConnection connection, Npgs
             .Min();
     }
 
-    private sealed class ApprovedVote(long id, VoteDetails details, long sourceImportId)
+    private sealed class ApprovedVote(long id, VoteDetails details, Dictionary<string, long> fieldSources)
     {
         public long Id { get; } = id;
-        public long SourceImportId { get; } = sourceImportId;
+
+        /// <summary>The import that set each vote field (<see cref="VoteFields"/>): the approved source of a field conflict.</summary>
+        public Dictionary<string, long> FieldSources { get; } = fieldSources;
         public Dictionary<string, (Ballot Ballot, long SourceImportId)> Ballots { get; } = [];
         public HashSet<ConflictKey> Pending { get; } = [];
         public HashSet<ConflictKey> Rejected { get; } = [];

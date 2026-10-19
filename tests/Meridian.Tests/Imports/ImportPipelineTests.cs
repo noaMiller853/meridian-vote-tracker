@@ -70,7 +70,7 @@ public sealed class ImportPipelineTests(PostgresFixture fixture)
         var secondRows = await AllRows(api, second.Import.Id);
         Assert.Equal([(2, "Conflict"), (3, "Unchanged"), (4, "New"), (5, "New"), (6, "New")], secondRows.Select(r => (r.Line, r.Classification)));
         Assert.Equal(("approved Y, file says A", "Open"), (secondRows[0].Reason, secondRows[0].ConflictAction));
-        Assert.Equal("new conflicts opened: 2 (0 already waiting for a decision, 0 already rejected)",
+        Assert.Equal("new conflicts opened: 2 (0 already waiting for a decision, 0 already rejected, 0 already superseded)",
             second.Report!.Value.GetProperty("conflicts").GetProperty("summary").GetString());
 
         await using (var db = api.Db())
@@ -95,7 +95,7 @@ public sealed class ImportPipelineTests(PostgresFixture fixture)
         // Dana uploads the corrected file again: 0 new data and 0 new conflicts.
         var again = await api.ImportAsync("corrected.csv", Corrected);
         Assert.Equal((0, 4, 1), (again.Import.Counts.New, again.Import.Counts.Unchanged, again.Import.Counts.Conflict));
-        Assert.Equal("new conflicts opened: 0 (2 already waiting for a decision, 0 already rejected)",
+        Assert.Equal("new conflicts opened: 0 (2 already waiting for a decision, 0 already rejected, 0 already superseded)",
             again.Report!.Value.GetProperty("conflicts").GetProperty("summary").GetString());
         await using (var db = api.Db())
             Assert.Equal(2, await db.Conflicts.CountAsync());

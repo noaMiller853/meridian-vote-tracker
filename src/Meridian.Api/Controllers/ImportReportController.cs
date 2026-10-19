@@ -133,7 +133,7 @@ public sealed class ImportReportController(MeridianDbContext db) : ControllerBas
     private static ImportVoteDto ToDto(ImportVote v) => new(
         v.AssemblyVoteId, v.VoteId, v.Status, v.VoteCreated, v.RowCount,
         new ImportVoteCounts(v.NewCount, v.UnchangedCount, v.DuplicateCount, v.InvalidCount, v.ContradictionCount, v.ConflictCount),
-        v.ConflictsOpened, v.ConflictsAlreadyPending, v.ConflictsAlreadyRejected, Parse(v.FieldConflicts), v.ContradictionReason);
+        v.ConflictsOpened, v.ConflictsAlreadyPending, v.ConflictsAlreadyRejected, v.ConflictsAlreadySuperseded, Parse(v.FieldConflicts), v.ContradictionReason);
 
     private static JsonElement? Parse(string? json)
     {
@@ -175,6 +175,7 @@ public sealed record ImportVoteDto(
     int ConflictsOpened,
     int ConflictsAlreadyPending,
     int ConflictsAlreadyRejected,
+    int ConflictsAlreadySuperseded,
     JsonElement? FieldConflicts,
     string? ContradictionReason);
 

@@ -19,6 +19,8 @@ public class ConflictConfiguration : IEntityTypeConfiguration<Conflict>
             t.HasCheckConstraint("ck_conflicts_status", "status IN ('Pending', 'Approved', 'Rejected')");
             t.HasCheckConstraint("ck_conflicts_decision",
                 "(status = 'Pending') = (decided_by_id IS NULL AND decided_at IS NULL)");
+            t.HasCheckConstraint("ck_conflicts_replaced",
+                "(status = 'Approved') = (replaced_value IS NOT NULL) AND (replaced_value IS NULL) = (replaced_source_import_id IS NULL)");
         });
 
         b.Property(x => x.CreatedAt).HasDefaultValueSql("now()");
@@ -38,6 +40,7 @@ public class ConflictConfiguration : IEntityTypeConfiguration<Conflict>
         b.HasOne(x => x.ProposedSourceRow).WithMany()
             .HasForeignKey(x => new { x.ProposedSourceImportId, x.ProposedSourceRowNumber });
         b.HasOne(x => x.DecidedBy).WithMany().HasForeignKey(x => x.DecidedById);
+        b.HasOne(x => x.ReplacedSourceImport).WithMany().HasForeignKey(x => x.ReplacedSourceImportId);
     }
 }
 

@@ -37,7 +37,7 @@ public sealed class RealFileImportTests(PostgresFixture fixture)
         // 2. rev2: corrections, completions and a new vote.
         var rev2 = await api.ImportAsync("assembly_export_2024_q1_rev2.csv", rev2Csv);
         Assert.Equal(new ImportCounts(New: 378, Unchanged: 5576, Duplicate: 0, Invalid: 0, Contradiction: 0, Conflict: 6, Normalized: 0), rev2.Import.Counts);
-        Assert.Equal("new conflicts opened: 8 (0 already waiting for a decision, 0 already rejected)",
+        Assert.Equal("new conflicts opened: 8 (0 already waiting for a decision, 0 already rejected, 0 already superseded)",
             rev2.Report!.Value.GetProperty("conflicts").GetProperty("summary").GetString());
 
         await using (var db = api.Db())
@@ -70,7 +70,7 @@ public sealed class RealFileImportTests(PostgresFixture fixture)
         // 4. rev2 again: the 8 conflicts are already waiting; none is opened twice (ING-12).
         var rev2Again = await api.ImportAsync("assembly_export_2024_q1_rev2.csv", rev2Csv);
         Assert.Equal((0, 6), (rev2Again.Import.Counts.New, rev2Again.Import.Counts.Conflict));
-        Assert.Equal("new conflicts opened: 0 (8 already waiting for a decision, 0 already rejected)",
+        Assert.Equal("new conflicts opened: 0 (8 already waiting for a decision, 0 already rejected, 0 already superseded)",
             rev2Again.Report!.Value.GetProperty("conflicts").GetProperty("summary").GetString());
         await using (var db = api.Db())
             Assert.Equal(8, await db.Conflicts.CountAsync());

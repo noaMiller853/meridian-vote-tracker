@@ -25,6 +25,7 @@ public class ImportVote
     public int ConflictsOpened { get; set; }
     public int ConflictsAlreadyPending { get; set; }
     public int ConflictsAlreadyRejected { get; set; }
+    public int ConflictsAlreadySuperseded { get; set; }
 
     /// <summary>Vote-field changes (jsonb array of {field, approvedValue, proposedValue, action}).</summary>
     public string? FieldConflicts { get; set; }
