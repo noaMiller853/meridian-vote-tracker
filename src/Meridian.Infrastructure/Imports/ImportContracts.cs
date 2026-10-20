@@ -51,8 +51,11 @@ public sealed class ImportFileException(string message, object? details = null) 
     public string ReportJson { get; } = JsonSerializer.Serialize(new { status = "Failed", fileError = message, details });
 }
 
-/// <summary>Wakes the worker right after an upload instead of waiting for the next poll.</summary>
-public sealed class ImportSignal
+/// <summary>Wakes the import worker right after an upload instead of waiting for the next poll.</summary>
+public sealed class ImportSignal : JobSignal;
+
+/// <summary>Wakes a background worker right after a job is queued instead of waiting for the next poll.</summary>
+public abstract class JobSignal
 {
     private readonly SemaphoreSlim _signal = new(0, 1);
 

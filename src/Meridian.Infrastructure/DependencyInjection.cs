@@ -2,6 +2,7 @@ using Meridian.Infrastructure.Files;
 using Meridian.Infrastructure.Imports;
 using Meridian.Infrastructure.Persistence;
 using Meridian.Infrastructure.Review;
+using Meridian.Infrastructure.Snapshots;
 using Meridian.Infrastructure.Votes;
 using Meridian.Infrastructure.Startup;
 using Npgsql;
@@ -45,6 +46,10 @@ public static class DependencyInjection
         services.AddScoped<ImportService>();
         services.AddScoped<IImportProcessor, VoteImportProcessor>();
         services.AddHostedService<ImportWorker>();
+
+        services.Configure<SnapshotOptions>(configuration.GetSection("Snapshots"));
+        services.AddSingleton<SnapshotSignal>();
+        services.AddHostedService<SnapshotWorker>();
 
         services.AddScoped<ConflictReader>();
         services.AddScoped<ConflictDecisionService>();
