@@ -67,6 +67,12 @@ Every `/api` request names the acting user in the `X-User` header (`Dana`, `Omar
 | `GET` | `/api/votes/{id}` | One vote: details with their source, country votes (source file and line, approved by, `changedByDecision`), position, pending conflicts |
 | `GET` | `/api/votes/{id}/timeline` | Everything that happened in the vote, oldest first: imports that contained it, vote created, countries added, conflicts opened and decided, values changed, position changes; with who, when, source file, previous and new value |
 | `PUT` | `/api/votes/{id}/position` | Admin only. `{"stance": "For" or "Against", "weight": 1-5, "expectedVersion": 0}`: send `0` for the first position, otherwise `position.version` as read. 409 with the current position if someone changed it since; the same values again return `changed: false` and record nothing |
+| `POST` | `/api/snapshots` | Analyst or Admin. `{"name": "...", "dateFrom": "...", "dateTo": "...", "session": 79, "assemblyVoteIds": [...], "excludeVotesWithoutPosition": false}`: filter and list are a union. Returns 202; the calculation runs in the background. Votes without a position give 409 listing them, unless `excludeVotesWithoutPosition` is true (then they are listed as excluded) |
+| `GET` | `/api/snapshots` | Snapshots, newest first, with status, phase and progress, quarter, published by / at |
+| `GET` | `/api/snapshots/{id}` | Status and progress; then the rules used, the selection, the excluded votes with their reason, and the ranking (score, "N of M", weights, counts per outcome) |
+| `GET` | `/api/snapshots/{id}/countries/{code}` | How one country's score was calculated: each included vote with ballot, position, weight, outcome, counted and matched; paged with `afterOrdinal=` and `take` (max 500) |
+| `GET` | `/api/snapshots/{id}/votes` | The frozen votes (`included=true` or `false`), paged with `afterVoteId=` |
+| `PUT` | `/api/snapshots/{id}/publish` | Admin only. Publishes a Saved snapshot for its quarter (the quarter of its latest included vote). 409 if the quarter has one; `{"replace": true}` publishes this one instead and returns the other to Saved |
 | `GET` | `/health` | Liveness, no user needed |
 
 ```
@@ -78,11 +84,14 @@ curl -H "X-User: Omar" -H "Content-Type: application/json" -d "{\"decision\":\"A
 curl -H "X-User: Dana" "http://localhost:5284/api/votes?hasPosition=false&session=79"
 curl -H "X-User: Lena" -X PUT -H "Content-Type: application/json" -d "{\"stance\":\"For\",\"weight\":4,\"expectedVersion\":0}" http://localhost:5284/api/votes/1/position
 curl -H "X-User: Dana" http://localhost:5284/api/votes/1/timeline
+curl -H "X-User: Dana" -H "Content-Type: application/json" -d "{\"name\":\"2024 Q1\",\"dateFrom\":\"2024-01-01\",\"dateTo\":\"2024-03-31\"}" http://localhost:5284/api/snapshots
+curl -H "X-User: Dana" http://localhost:5284/api/snapshots/1/countries/BRA
+curl -H "X-User: Lena" -X PUT http://localhost:5284/api/snapshots/1/publish
 ```
 
 Line numbers in reports are lines in the file (the header is line 1). Recommended order for the provided files: q1, then rev2 (opens 6 ballot and 2 vote-field conflicts), then the historic file (70 to 90 s for 962,171 lines).
 
-Uploaded files are kept in `FileStore:LocalRoot` (Development: `data/uploads` at the repository root, git-ignored), named by their sha256. Import settings: `Imports:PollSeconds`, `Imports:ProgressIntervalMs`, `Imports:CommandTimeoutSeconds`.
+Uploaded files are kept in `FileStore:LocalRoot` (Development: `data/uploads` at the repository root, git-ignored), named by their sha256. Import settings: `Imports:PollSeconds`, `Imports:ProgressIntervalMs`, `Imports:CommandTimeoutSeconds`; the same three under `Snapshots:` for the snapshot worker. A snapshot of the full history takes about 7 s.
 
 ## Tests
 `dotnet test`. Integration tests start a real PostgreSQL through Testcontainers, so Docker must be running. The test that streams the 100 MB historic file looks for `assembly_historic.csv` in `MERIDIAN_DATA_DIR`, then in `data/`, then next to the repository folder, and is skipped when it is not found.
