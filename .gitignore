@@ -19,6 +19,7 @@ secrets.json
 # Data files provided separately (the historic file is about 100 MB)
 data/
 
-# Editors and logs
+# Editors, OS files and logs
 .idea/
+.DS_Store
 *.log
