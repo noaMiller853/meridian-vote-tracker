@@ -50,6 +50,8 @@ public static class DependencyInjection
         services.Configure<SnapshotOptions>(configuration.GetSection("Snapshots"));
         services.AddSingleton<SnapshotSignal>();
         services.AddHostedService<SnapshotWorker>();
+        services.AddScoped<SnapshotReader>();
+        services.AddScoped<SnapshotService>();
 
         services.AddScoped<ConflictReader>();
         services.AddScoped<ConflictDecisionService>();

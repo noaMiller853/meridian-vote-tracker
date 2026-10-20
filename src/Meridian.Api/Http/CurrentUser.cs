@@ -18,6 +18,11 @@ public sealed class CurrentUser
     /// <summary>POS-01: only the admin sets positions and weights.</summary>
     public bool CanSetPositions => Role is "Admin";
 
+    /// <summary>Spec section 3: an analyst creates snapshots (the admin may too); only the admin publishes (SNP-05).</summary>
+    public bool CanCreateSnapshots => Role is "Analyst" or "Admin";
+
+    public bool CanPublishSnapshots => Role is "Admin";
+
     internal void Set(long id, string name, string role) => (Id, Name, Role) = (id, name, role);
 }
 
