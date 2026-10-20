@@ -4,17 +4,20 @@
  */
 
 export interface paths {
-    "/api/imports": {
+    "/api/conflicts": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Import history, newest first */
         get: {
             parameters: {
                 query?: {
+                    status?: string;
+                    assemblyVoteId?: string;
+                    kind?: string;
+                    afterId?: number;
                     take?: number;
                 };
                 header?: never;
@@ -29,72 +32,39 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ImportSummary"][];
+                        "text/plain": components["schemas"]["ConflictPage"];
+                        "application/json": components["schemas"]["ConflictPage"];
+                        "text/json": components["schemas"]["ConflictPage"];
                     };
                 };
-            };
-        };
-        put?: never;
-        /** Upload an Assembly export (CSV) */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "multipart/form-data": {
-                        /** Format: binary */
-                        file?: string;
-                    };
-                };
-            };
-            responses: {
-                /** @description Accepted: processed in the background */
-                202: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ImportCreatedResponse"];
-                    };
-                };
-                /** @description No file */
+                /** @description Bad Request */
                 400: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description Unknown user */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                        "text/plain": components["schemas"]["ValidationProblemDetails"];
+                        "application/json": components["schemas"]["ValidationProblemDetails"];
+                        "text/json": components["schemas"]["ValidationProblemDetails"];
                     };
                 };
             };
         };
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/imports/{id}": {
+    "/api/conflicts/{id}": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** One import with live progress */
         get: {
             parameters: {
                 query?: never;
@@ -112,22 +82,115 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ImportDetails"];
+                        "text/plain": components["schemas"]["ConflictDetails"];
+                        "application/json": components["schemas"]["ConflictDetails"];
+                        "text/json": components["schemas"]["ConflictDetails"];
                     };
                 };
-                /** @description Not found */
+                /** @description Not Found */
                 404: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
                     };
                 };
             };
         };
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/conflicts/{id}/decision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["DecisionBody"];
+                    "text/json": components["schemas"]["DecisionBody"];
+                    "application/*+json": components["schemas"]["DecisionBody"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ConflictDetails"];
+                        "application/json": components["schemas"]["ConflictDetails"];
+                        "text/json": components["schemas"]["ConflictDetails"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ValidationProblemDetails"];
+                        "application/json": components["schemas"]["ValidationProblemDetails"];
+                        "text/json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
@@ -141,7 +204,6 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Stored import report */
         get: {
             parameters: {
                 query?: never;
@@ -159,16 +221,20 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
+                        "text/plain": components["schemas"]["ImportReport"];
                         "application/json": components["schemas"]["ImportReport"];
+                        "text/json": components["schemas"]["ImportReport"];
                     };
                 };
-                /** @description Not found */
+                /** @description Not Found */
                 404: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
                     };
                 };
             };
@@ -188,7 +254,6 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Rows of the import with class, reason and original value */
         get: {
             parameters: {
                 query?: {
@@ -211,25 +276,31 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
+                        "text/plain": components["schemas"]["ImportRowPage"];
                         "application/json": components["schemas"]["ImportRowPage"];
+                        "text/json": components["schemas"]["ImportRowPage"];
                     };
                 };
-                /** @description Unknown class */
+                /** @description Bad Request */
                 400: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description Not found */
+                /** @description Not Found */
                 404: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
                     };
                 };
             };
@@ -249,7 +320,6 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** What happened in each vote of the import */
         get: {
             parameters: {
                 query?: {
@@ -271,16 +341,20 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
+                        "text/plain": components["schemas"]["ImportVotePage"];
                         "application/json": components["schemas"]["ImportVotePage"];
+                        "text/json": components["schemas"]["ImportVotePage"];
                     };
                 };
-                /** @description Not found */
+                /** @description Not Found */
                 404: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
                     };
                 };
             };
@@ -300,7 +374,6 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** One vote of the import with all its rows */
         get: {
             parameters: {
                 query?: {
@@ -320,16 +393,20 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
+                        "text/plain": components["schemas"]["ImportVoteDetails"];
                         "application/json": components["schemas"]["ImportVoteDetails"];
+                        "text/json": components["schemas"]["ImportVoteDetails"];
                     };
                 };
-                /** @description Not found */
+                /** @description Not Found */
                 404: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
                     };
                 };
             };
@@ -342,21 +419,16 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/conflicts": {
+    "/api/imports": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Conflicts, oldest first (default: Pending) */
         get: {
             parameters: {
                 query?: {
-                    status?: string;
-                    assemblyVoteId?: string;
-                    kind?: string;
-                    afterId?: number;
                     take?: number;
                 };
                 header?: never;
@@ -371,36 +443,77 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ConflictPage"];
-                    };
-                };
-                /** @description Validation error: errors are listed under the request field name */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                        "text/plain": components["schemas"]["ImportSummary"][];
+                        "application/json": components["schemas"]["ImportSummary"][];
+                        "text/json": components["schemas"]["ImportSummary"][];
                     };
                 };
             };
         };
         put?: never;
-        post?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "multipart/form-data": {
+                        file?: components["schemas"]["IFormFile"];
+                    };
+                };
+            };
+            responses: {
+                /** @description Accepted */
+                202: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ImportCreatedResponse"];
+                        "application/json": components["schemas"]["ImportCreatedResponse"];
+                        "text/json": components["schemas"]["ImportCreatedResponse"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/conflicts/{id}": {
+    "/api/imports/{id}": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** One conflict with both sides */
         get: {
             parameters: {
                 query?: never;
@@ -418,16 +531,20 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ConflictDetails"];
+                        "text/plain": components["schemas"]["ImportDetails"];
+                        "application/json": components["schemas"]["ImportDetails"];
+                        "text/json": components["schemas"]["ImportDetails"];
                     };
                 };
-                /** @description Not found */
+                /** @description Not Found */
                 404: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
                     };
                 };
             };
@@ -440,7 +557,277 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/conflicts/{id}/decision": {
+    "/api/snapshots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SnapshotSummary"][];
+                        "application/json": components["schemas"]["SnapshotSummary"][];
+                        "text/json": components["schemas"]["SnapshotSummary"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Create a snapshot from a selection of votes (Analyst or Admin)
+         * @description Selection (SNP-01): dateFrom and/or dateTo (inclusive), session, and/or assemblyVoteIds. A filter and a list are
+         *     combined as a union: the votes that match the filter plus the listed ones. An unknown id is a 400 under
+         *     assemblyVoteIds.
+         *
+         *     Votes without a position (POS-04): by default the request is refused with 409, listing them, and nothing is
+         *     created. Set their positions, remove them from the selection, or resend with "excludeVotesWithoutPosition": true;
+         *     the snapshot then lists them as excluded with the reason.
+         *
+         *     Example: {"name": "2024 Q1", "dateFrom": "2024-01-01", "dateTo": "2024-03-31"}. Poll GET /api/snapshots/{id} for
+         *     the status and progress.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateSnapshotBody"];
+                    "text/json": components["schemas"]["CreateSnapshotBody"];
+                    "application/*+json": components["schemas"]["CreateSnapshotBody"];
+                };
+            };
+            responses: {
+                /** @description Accepted */
+                202: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SnapshotCreatedResponse"];
+                        "application/json": components["schemas"]["SnapshotCreatedResponse"];
+                        "text/json": components["schemas"]["SnapshotCreatedResponse"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ValidationProblemDetails"];
+                        "application/json": components["schemas"]["ValidationProblemDetails"];
+                        "text/json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/snapshots/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SnapshotDetails"];
+                        "application/json": components["schemas"]["SnapshotDetails"];
+                        "text/json": components["schemas"]["SnapshotDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/snapshots/{id}/countries/{countryCode}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    afterOrdinal?: number;
+                    take?: number;
+                };
+                header?: never;
+                path: {
+                    id: number;
+                    countryCode: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CountryBreakdown"];
+                        "application/json": components["schemas"]["CountryBreakdown"];
+                        "text/json": components["schemas"]["CountryBreakdown"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/snapshots/{id}/votes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    included?: boolean;
+                    afterVoteId?: number;
+                    take?: number;
+                };
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SnapshotVotePage"];
+                        "application/json": components["schemas"]["SnapshotVotePage"];
+                        "text/json": components["schemas"]["SnapshotVotePage"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/snapshots/{id}/publish": {
         parameters: {
             query?: never;
             header?: never;
@@ -448,9 +835,14 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        put?: never;
-        /** Approve or reject a conflict */
-        post: {
+        /**
+         * Publish a snapshot for its quarter (Admin only)
+         * @description Publishes a Saved snapshot for its quarter: the calendar quarter of its latest included vote date (shown as
+         *     "quarter"). One snapshot is published per quarter. If the quarter already has one, the answer is 409 naming it;
+         *     resend with {"replace": true} to publish this one instead: the other returns to Saved in the same transaction and
+         *     both changes are audited.
+         */
+        put: {
             parameters: {
                 query?: never;
                 header?: never;
@@ -461,7 +853,9 @@ export interface paths {
             };
             requestBody?: {
                 content: {
-                    "application/json": components["schemas"]["DecisionBody"];
+                    "application/json": components["schemas"]["PublishBody"];
+                    "text/json": components["schemas"]["PublishBody"];
+                    "application/*+json": components["schemas"]["PublishBody"];
                 };
             };
             responses: {
@@ -471,47 +865,47 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ConflictDetails"];
+                        "text/plain": components["schemas"]["SnapshotDetails"];
+                        "application/json": components["schemas"]["SnapshotDetails"];
+                        "text/json": components["schemas"]["SnapshotDetails"];
                     };
                 };
-                /** @description Validation error: errors are listed under the request field name */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
-                    };
-                };
-                /** @description Not allowed for this role */
+                /** @description Forbidden */
                 403: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description Not found */
+                /** @description Not Found */
                 404: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description Conflict with the current state; the problem carries the current state */
+                /** @description Conflict */
                 409: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
                     };
                 };
             };
         };
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -525,7 +919,6 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Votes with position and open conflicts */
         get: {
             parameters: {
                 query?: {
@@ -550,16 +943,20 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
+                        "text/plain": components["schemas"]["VotePage"];
                         "application/json": components["schemas"]["VotePage"];
+                        "text/json": components["schemas"]["VotePage"];
                     };
                 };
-                /** @description Validation error: errors are listed under the request field name */
+                /** @description Bad Request */
                 400: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                        "text/plain": components["schemas"]["ValidationProblemDetails"];
+                        "application/json": components["schemas"]["ValidationProblemDetails"];
+                        "text/json": components["schemas"]["ValidationProblemDetails"];
                     };
                 };
             };
@@ -579,7 +976,6 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** One vote with its country votes */
         get: {
             parameters: {
                 query?: never;
@@ -597,16 +993,20 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
+                        "text/plain": components["schemas"]["VoteView"];
                         "application/json": components["schemas"]["VoteView"];
+                        "text/json": components["schemas"]["VoteView"];
                     };
                 };
-                /** @description Not found */
+                /** @description Not Found */
                 404: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
                     };
                 };
             };
@@ -626,7 +1026,6 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Full history of one vote */
         get: {
             parameters: {
                 query?: never;
@@ -644,16 +1043,20 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
+                        "text/plain": components["schemas"]["VoteTimeline"];
                         "application/json": components["schemas"]["VoteTimeline"];
+                        "text/json": components["schemas"]["VoteTimeline"];
                     };
                 };
-                /** @description Not found */
+                /** @description Not Found */
                 404: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
                     };
                 };
             };
@@ -674,7 +1077,18 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Set the stance and weight of a vote (Admin only) */
+        /**
+         * Set the stance and weight of a vote (Admin only)
+         * @description Sets the stance (For or Against) and the weight (1 to 5) of a vote. Admin only (POS-01): an Analyst gets 403.
+         *
+         *     expectedVersion is the position.version you last read from GET /api/votes/{id}. For the FIRST position of a vote
+         *     (position is null), send expectedVersion 0, for example: {"stance": "For", "weight": 4, "expectedVersion": 0}.
+         *     Each change adds 1 to the version.
+         *
+         *     If someone changed the position since you read it, the answer is 409 with the current position in "position",
+         *     and nothing is changed. Sending the same stance and weight again returns 200 with "changed": false and records
+         *     nothing. Validation errors come back as 400 under the field name (stance, weight, expectedVersion).
+         */
         put: {
             parameters: {
                 query?: never;
@@ -684,9 +1098,11 @@ export interface paths {
                 };
                 cookie?: never;
             };
-            requestBody?: {
+            requestBody: {
                 content: {
                     "application/json": components["schemas"]["PositionBody"];
+                    "text/json": components["schemas"]["PositionBody"];
+                    "application/*+json": components["schemas"]["PositionBody"];
                 };
             };
             responses: {
@@ -696,350 +1112,53 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
+                        "text/plain": components["schemas"]["PositionResult"];
                         "application/json": components["schemas"]["PositionResult"];
+                        "text/json": components["schemas"]["PositionResult"];
                     };
                 };
-                /** @description Validation error: errors are listed under the request field name */
+                /** @description Bad Request */
                 400: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                        "text/plain": components["schemas"]["ValidationProblemDetails"];
+                        "application/json": components["schemas"]["ValidationProblemDetails"];
+                        "text/json": components["schemas"]["ValidationProblemDetails"];
                     };
                 };
-                /** @description Not allowed for this role */
+                /** @description Forbidden */
                 403: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description Not found */
+                /** @description Not Found */
                 404: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description Conflict with the current state; the problem carries the current state */
+                /** @description Conflict */
                 409: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-            };
-        };
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/snapshots": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Snapshots, newest first */
-        get: {
-            parameters: {
-                query?: {
-                    take?: number;
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["SnapshotSummary"][];
-                    };
-                };
-            };
-        };
-        put?: never;
-        /** Create a snapshot from a selection of votes */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": components["schemas"]["CreateSnapshotBody"];
-                };
-            };
-            responses: {
-                /** @description Accepted: calculated in the background */
-                202: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["SnapshotCreatedResponse"];
-                    };
-                };
-                /** @description Validation error: errors are listed under the request field name */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
-                    };
-                };
-                /** @description Not allowed for this role */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description Conflict with the current state; the problem carries the current state */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/snapshots/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** One snapshot with its ranking */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["SnapshotDetails"];
-                    };
-                };
-                /** @description Not found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/snapshots/{id}/countries/{countryCode}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** How one country score was calculated */
-        get: {
-            parameters: {
-                query?: {
-                    afterOrdinal?: number;
-                    take?: number;
-                };
-                header?: never;
-                path: {
-                    id: number;
-                    countryCode: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["CountryBreakdown"];
-                    };
-                };
-                /** @description Not found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/snapshots/{id}/votes": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** The frozen votes of a snapshot */
-        get: {
-            parameters: {
-                query?: {
-                    included?: boolean;
-                    afterVoteId?: number;
-                    take?: number;
-                };
-                header?: never;
-                path: {
-                    id: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["SnapshotVotePage"];
-                    };
-                };
-                /** @description Not found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/snapshots/{id}/publish": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /** Publish a snapshot for its quarter (Admin only) */
-        put: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": components["schemas"]["PublishBody"];
-                };
-            };
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["SnapshotDetails"];
-                    };
-                };
-                /** @description Not allowed for this role */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description Not found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description Conflict with the current state; the problem carries the current state */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
                     };
                 };
             };
@@ -1055,13 +1174,149 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        ImportCreatedResponse: {
+        ApprovedChange: {
             /** Format: int64 */
-            importId: number;
+            conflictId: number;
+            value: string;
+            decidedBy: string;
+            /** Format: date-time */
+            decidedAt: string;
+        } | null;
+        ConflictDecisionDto: {
+            decision: string;
+            decidedBy: string;
+            /** Format: date-time */
+            decidedAt: string;
+            note: string | null;
+            replacedValue: string | null;
+            replacedSource: components["schemas"]["ValueSource2"];
+        } | null;
+        ConflictDetails: {
             /** Format: int64 */
-            jobId: number;
+            id: number;
             status: string;
+            kind: string;
+            vote: components["schemas"]["ConflictVote"];
+            countryCode: string | null;
+            countryName: string | null;
+            fieldName: string | null;
+            approved: components["schemas"]["ConflictSide"];
+            proposed: components["schemas"]["ConflictSide"];
+            current: components["schemas"]["CurrentApprovedValue"];
+            decision: components["schemas"]["ConflictDecisionDto"];
+            /** Format: date-time */
+            createdAt: string;
         };
+        ConflictListItem: {
+            /** Format: int64 */
+            id: number;
+            status: string;
+            kind: string;
+            /** Format: int64 */
+            voteId: number;
+            assemblyVoteId: string;
+            countryCode: string | null;
+            countryName: string | null;
+            fieldName: string | null;
+            approvedValue: string;
+            proposedValue: string;
+            proposedFileName: string;
+            /** Format: date-time */
+            createdAt: string;
+            decidedBy: string | null;
+            /** Format: date-time */
+            decidedAt: string | null;
+        };
+        ConflictPage: {
+            items: components["schemas"]["ConflictListItem"][];
+            /** Format: int32 */
+            total: number;
+            /** Format: int64 */
+            nextAfterId: number | null;
+        };
+        ConflictSide: {
+            value: string;
+            source: components["schemas"]["ValueSource"];
+            /** Format: int32 */
+            line: number | null;
+        };
+        ConflictVote: {
+            /** Format: int64 */
+            voteId: number;
+            assemblyVoteId: string;
+            /** Format: int32 */
+            session: number;
+            /** Format: date */
+            voteDate: string;
+            title: string;
+        };
+        CountryBreakdown: {
+            country: components["schemas"]["CountryRanking"];
+            /** Format: int32 */
+            votes: number;
+            items: components["schemas"]["VoteContribution"][];
+            /** Format: int32 */
+            nextAfterOrdinal: number | null;
+        };
+        CountryRanking: {
+            countryCode: string;
+            countryName: string;
+            /** Format: double */
+            score: number | null;
+            scoreText: string;
+            /** Format: int32 */
+            rank: number | null;
+            rankText: string;
+            /** Format: int32 */
+            countedWeight: number;
+            /** Format: int32 */
+            matchedWeight: number;
+            votes: components["schemas"]["OutcomeCounts"];
+        };
+        CountryVoteDto: {
+            countryCode: string;
+            countryName: string;
+            ballot: string;
+            source: components["schemas"]["ImportRef"];
+            /** Format: int32 */
+            sourceLine: number;
+            approvedBy: string;
+            /** Format: date-time */
+            approvedAt: string;
+            changedByDecision: boolean;
+        };
+        CreateSnapshotBody: {
+            name: string | null;
+            /** Format: date */
+            dateFrom: string | null;
+            /** Format: date */
+            dateTo: string | null;
+            /** Format: int32 */
+            session: number | null;
+            assemblyVoteIds: string[] | null;
+            excludeVotesWithoutPosition: boolean | null;
+        };
+        CurrentApprovedValue: {
+            value: string;
+            isStale: boolean;
+            changedBy: components["schemas"]["ApprovedChange"];
+        };
+        DecisionBody: {
+            decision: string | null;
+            note: string | null;
+            expectedApprovedValue: string | null;
+        };
+        ExcludedVote: {
+            assemblyVoteId: string;
+            /** Format: int32 */
+            session: number;
+            /** Format: date */
+            voteDate: string;
+            title: string;
+            reason: string;
+        };
+        /** Format: binary */
+        IFormFile: string;
         ImportCounts: {
             /** Format: int32 */
             new: number;
@@ -1078,6 +1333,55 @@ export interface components {
             /** Format: int32 */
             normalized: number;
         };
+        ImportCreatedResponse: {
+            /** Format: int64 */
+            importId: number;
+            /** Format: int64 */
+            jobId: number;
+            status: string;
+        };
+        ImportDetails: {
+            import: components["schemas"]["ImportSummary"];
+            report: components["schemas"]["NullableOfJsonElement"];
+        };
+        ImportRef: {
+            /** Format: int64 */
+            importId: number;
+            fileName: string;
+        };
+        ImportRef2: {
+            /** Format: int64 */
+            importId: number;
+            fileName: string;
+        } | null;
+        ImportReport: {
+            /** Format: int64 */
+            importId: number;
+            fileName: string;
+            status: string;
+            counts: components["schemas"]["ImportCounts"];
+            summary: components["schemas"]["NullableOfJsonElement"];
+        };
+        ImportRowDto: {
+            /** Format: int32 */
+            line: number;
+            classification: string;
+            reason: string | null;
+            originalValue: string | null;
+            conflictAction: string | null;
+            assemblyVoteId: string | null;
+            countryCode: string | null;
+            originalCountryCode: string | null;
+            ballot: string | null;
+            rawLine: string;
+            problems: components["schemas"]["NullableOfJsonElement"];
+            normalizations: components["schemas"]["NullableOfJsonElement"];
+        };
+        ImportRowPage: {
+            items: components["schemas"]["ImportRowDto"][];
+            /** Format: int32 */
+            nextAfter: number | null;
+        };
         ImportSummary: {
             /** Format: int64 */
             id: number;
@@ -1089,49 +1393,17 @@ export interface components {
             /** Format: date-time */
             uploadedAt: string;
             /** Format: date-time */
-            publishedAt?: string | null;
+            publishedAt: string | null;
             status: string;
-            phase?: string | null;
+            phase: string | null;
             /** Format: int32 */
             done: number;
             /** Format: int32 */
-            total?: number | null;
-            error?: string | null;
+            total: number | null;
+            error: string | null;
             /** Format: date-time */
-            finishedAt?: string | null;
+            finishedAt: string | null;
             counts: components["schemas"]["ImportCounts"];
-        };
-        ImportDetails: {
-            import: components["schemas"]["ImportSummary"];
-            report?: unknown;
-        };
-        ImportReport: {
-            /** Format: int64 */
-            importId: number;
-            fileName: string;
-            status: string;
-            counts: components["schemas"]["ImportCounts"];
-            summary?: unknown;
-        };
-        ImportRowDto: {
-            /** Format: int32 */
-            line: number;
-            classification: string;
-            reason?: string | null;
-            originalValue?: string | null;
-            conflictAction?: string | null;
-            assemblyVoteId?: string | null;
-            countryCode?: string | null;
-            originalCountryCode?: string | null;
-            ballot?: string | null;
-            rawLine: string;
-            problems?: unknown;
-            normalizations?: unknown;
-        };
-        ImportRowPage: {
-            items: components["schemas"]["ImportRowDto"][];
-            /** Format: int32 */
-            nextAfter?: number | null;
         };
         ImportVoteCounts: {
             /** Format: int32 */
@@ -1147,10 +1419,14 @@ export interface components {
             /** Format: int32 */
             conflict: number;
         };
+        ImportVoteDetails: {
+            vote: components["schemas"]["ImportVoteDto"];
+            rows: components["schemas"]["ImportRowDto"][];
+        };
         ImportVoteDto: {
             assemblyVoteId: string;
             /** Format: int64 */
-            voteId?: number | null;
+            voteId: number | null;
             status: string;
             voteCreated: boolean;
             /** Format: int32 */
@@ -1164,117 +1440,34 @@ export interface components {
             conflictsAlreadyRejected: number;
             /** Format: int32 */
             conflictsAlreadySuperseded: number;
-            fieldConflicts?: unknown;
-            contradictionReason?: string | null;
+            fieldConflicts: components["schemas"]["NullableOfJsonElement"];
+            contradictionReason: string | null;
         };
         ImportVotePage: {
             items: components["schemas"]["ImportVoteDto"][];
-            nextAfter?: string | null;
+            nextAfter: string | null;
         };
-        ImportVoteDetails: {
-            vote: components["schemas"]["ImportVoteDto"];
-            rows: components["schemas"]["ImportRowDto"][];
-        };
-        ValueSource: {
-            /** Format: int64 */
-            importId: number;
-            fileName: string;
-            uploadedBy: string;
-            /** Format: date-time */
-            uploadedAt: string;
-            /** Format: date-time */
-            publishedAt?: string | null;
-        };
-        ConflictSide: {
-            value: string;
-            source: components["schemas"]["ValueSource"];
+        NullableOfJsonElement: unknown;
+        OutcomeCounts: {
             /** Format: int32 */
-            line?: number | null;
-        };
-        ApprovedChange: {
-            /** Format: int64 */
-            conflictId: number;
-            value: string;
-            decidedBy: string;
-            /** Format: date-time */
-            decidedAt: string;
-        };
-        CurrentApprovedValue: {
-            value: string;
-            isStale: boolean;
-            changedBy?: components["schemas"]["ApprovedChange"] | null;
-        };
-        ConflictDecisionDto: {
-            decision: string;
-            decidedBy: string;
-            /** Format: date-time */
-            decidedAt: string;
-            note?: string | null;
-            replacedValue?: string | null;
-            replacedSource?: components["schemas"]["ValueSource"] | null;
-        };
-        ConflictVote: {
-            /** Format: int64 */
-            voteId: number;
-            assemblyVoteId: string;
+            matched: number;
             /** Format: int32 */
-            session: number;
-            /** Format: date */
-            voteDate: string;
-            title: string;
-        };
-        ConflictDetails: {
-            /** Format: int64 */
-            id: number;
-            status: string;
-            kind: string;
-            vote: components["schemas"]["ConflictVote"];
-            countryCode?: string | null;
-            countryName?: string | null;
-            fieldName?: string | null;
-            approved: components["schemas"]["ConflictSide"];
-            proposed: components["schemas"]["ConflictSide"];
-            current: components["schemas"]["CurrentApprovedValue"];
-            decision?: components["schemas"]["ConflictDecisionDto"] | null;
-            /** Format: date-time */
-            createdAt: string;
-        };
-        ConflictListItem: {
-            /** Format: int64 */
-            id: number;
-            status: string;
-            kind: string;
-            /** Format: int64 */
-            voteId: number;
-            assemblyVoteId: string;
-            countryCode?: string | null;
-            countryName?: string | null;
-            fieldName?: string | null;
-            approvedValue: string;
-            proposedValue: string;
-            proposedFileName: string;
-            /** Format: date-time */
-            createdAt: string;
-            decidedBy?: string | null;
-            /** Format: date-time */
-            decidedAt?: string | null;
-        };
-        ConflictPage: {
-            items: components["schemas"]["ConflictListItem"][];
+            notMatched: number;
             /** Format: int32 */
-            total: number;
-            /** Format: int64 */
-            nextAfterId?: number | null;
+            abstained: number;
+            /** Format: int32 */
+            absent: number;
+            /** Format: int32 */
+            notAMember: number;
+            /** Format: int32 */
+            noBallot: number;
         };
-        DecisionBody: {
-            decision?: string | null;
-            note?: string | null;
-            expectedApprovedValue?: string | null;
-        };
-        ImportRef: {
-            /** Format: int64 */
-            importId: number;
-            fileName: string;
+        PositionBody: {
+            stance: string | null;
+            /** Format: int32 */
+            weight: number | null;
+            /** Format: int32 */
+            expectedVersion: number | null;
         };
         PositionDto: {
             stance: string;
@@ -1285,6 +1478,184 @@ export interface components {
             setBy: string;
             /** Format: date-time */
             setAt: string;
+        } | null;
+        PositionDto2: {
+            stance: string;
+            /** Format: int32 */
+            weight: number;
+            /** Format: int32 */
+            version: number;
+            setBy: string;
+            /** Format: date-time */
+            setAt: string;
+        };
+        PositionResult: {
+            changed: boolean;
+            position: components["schemas"]["PositionDto2"];
+        };
+        ProblemDetails: {
+            type?: string | null;
+            title?: string | null;
+            /** Format: int32 */
+            status?: number | null;
+            detail?: string | null;
+            instance?: string | null;
+        };
+        PublishBody: {
+            replace: boolean | null;
+        } | null;
+        SnapshotCreatedResponse: {
+            /** Format: int64 */
+            snapshotId: number;
+            /** Format: int64 */
+            jobId: number;
+            /** Format: int32 */
+            selectedVotes: number;
+        };
+        SnapshotDetails: {
+            snapshot: components["schemas"]["SnapshotSummary"];
+            selection: components["schemas"]["SnapshotSelectionDto"];
+            excludeVotesWithoutPosition: boolean;
+            rules: components["schemas"]["SnapshotRulesDto"];
+            /** Format: int32 */
+            includedVotes: number;
+            /** Format: int32 */
+            excludedVoteCount: number;
+            excludedVotes: components["schemas"]["ExcludedVote"][];
+            /** Format: int64 */
+            replacedSnapshotId: number | null;
+            /** Format: int32 */
+            rankedCountries: number;
+            ranking: components["schemas"]["CountryRanking"][];
+        };
+        SnapshotRulesDto: {
+            version: string;
+            rules: string[];
+        };
+        SnapshotSelectionDto: {
+            /** Format: date */
+            dateFrom: string | null;
+            /** Format: date */
+            dateTo: string | null;
+            /** Format: int32 */
+            session: number | null;
+            assemblyVoteIds: string[];
+        };
+        SnapshotSummary: {
+            /** Format: int64 */
+            id: number;
+            name: string;
+            status: string;
+            jobStatus: string;
+            phase: string | null;
+            /** Format: int32 */
+            done: number;
+            /** Format: int32 */
+            total: number | null;
+            error: string | null;
+            quarter: string | null;
+            createdBy: string;
+            /** Format: date-time */
+            createdAt: string;
+            publishedBy: string | null;
+            /** Format: date-time */
+            publishedAt: string | null;
+        };
+        SnapshotVoteDto: {
+            /** Format: int64 */
+            voteId: number;
+            /** Format: int32 */
+            ordinal: number | null;
+            assemblyVoteId: string;
+            /** Format: int32 */
+            session: number;
+            /** Format: date */
+            voteDate: string;
+            title: string;
+            desiredOutcome: string | null;
+            /** Format: int32 */
+            weight: number | null;
+            included: boolean;
+            reason: string | null;
+        };
+        SnapshotVotePage: {
+            items: components["schemas"]["SnapshotVoteDto"][];
+            /** Format: int32 */
+            total: number;
+            /** Format: int64 */
+            nextAfterVoteId: number | null;
+        };
+        TimelineEntry: {
+            /** Format: date-time */
+            at: string;
+            action: string;
+            actor: string;
+            import: components["schemas"]["ImportRef2"];
+            /** Format: int64 */
+            conflictId: number | null;
+            summary: string;
+            oldValue: components["schemas"]["NullableOfJsonElement"];
+            newValue: components["schemas"]["NullableOfJsonElement"];
+        };
+        ValidationProblemDetails: {
+            type?: string | null;
+            title?: string | null;
+            /** Format: int32 */
+            status?: number | null;
+            detail?: string | null;
+            instance?: string | null;
+            errors?: {
+                [key: string]: string[];
+            };
+        };
+        ValueSource: {
+            /** Format: int64 */
+            importId: number;
+            fileName: string;
+            uploadedBy: string;
+            /** Format: date-time */
+            uploadedAt: string;
+            /** Format: date-time */
+            publishedAt: string | null;
+        };
+        ValueSource2: {
+            /** Format: int64 */
+            importId: number;
+            fileName: string;
+            uploadedBy: string;
+            /** Format: date-time */
+            uploadedAt: string;
+            /** Format: date-time */
+            publishedAt: string | null;
+        } | null;
+        VoteContribution: {
+            /** Format: int32 */
+            ordinal: number;
+            assemblyVoteId: string;
+            /** Format: int32 */
+            session: number;
+            /** Format: date */
+            voteDate: string;
+            title: string;
+            desiredOutcome: string;
+            /** Format: int32 */
+            weight: number;
+            ballot: string | null;
+            outcome: string;
+            counted: boolean;
+            matched: boolean;
+        };
+        VoteDetailSources: {
+            session: components["schemas"]["ImportRef"];
+            voteDate: components["schemas"]["ImportRef"];
+            title: components["schemas"]["ImportRef"];
+        };
+        VotePage: {
+            items: components["schemas"]["VoteSummary"][];
+            /** Format: int32 */
+            total: number;
+            /** Format: int64 */
+            nextAfterId: number | null;
         };
         VoteSummary: {
             /** Format: int64 */
@@ -1298,33 +1669,15 @@ export interface components {
             /** Format: int32 */
             countryVotes: number;
             hasPosition: boolean;
-            position?: components["schemas"]["PositionDto"] | null;
+            position: components["schemas"]["PositionDto"];
             /** Format: int32 */
             pendingConflicts: number;
         };
-        VotePage: {
-            items: components["schemas"]["VoteSummary"][];
-            /** Format: int32 */
-            total: number;
+        VoteTimeline: {
             /** Format: int64 */
-            nextAfterId?: number | null;
-        };
-        VoteDetailSources: {
-            session: components["schemas"]["ImportRef"];
-            voteDate: components["schemas"]["ImportRef"];
-            title: components["schemas"]["ImportRef"];
-        };
-        CountryVoteDto: {
-            countryCode: string;
-            countryName: string;
-            ballot: string;
-            source: components["schemas"]["ImportRef"];
-            /** Format: int32 */
-            sourceLine: number;
-            approvedBy: string;
-            /** Format: date-time */
-            approvedAt: string;
-            changedByDecision: boolean;
+            voteId: number;
+            assemblyVoteId: string;
+            entries: components["schemas"]["TimelineEntry"][];
         };
         VoteView: {
             /** Format: int64 */
@@ -1340,225 +1693,10 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
             hasPosition: boolean;
-            position?: components["schemas"]["PositionDto"] | null;
+            position: components["schemas"]["PositionDto"];
             /** Format: int32 */
             pendingConflicts: number;
             countryVotes: components["schemas"]["CountryVoteDto"][];
-        };
-        TimelineEntry: {
-            /** Format: date-time */
-            at: string;
-            action: string;
-            actor: string;
-            import?: components["schemas"]["ImportRef"] | null;
-            /** Format: int64 */
-            conflictId?: number | null;
-            summary: string;
-            oldValue?: unknown;
-            newValue?: unknown;
-        };
-        VoteTimeline: {
-            /** Format: int64 */
-            voteId: number;
-            assemblyVoteId: string;
-            entries: components["schemas"]["TimelineEntry"][];
-        };
-        PositionResult: {
-            changed: boolean;
-            position: components["schemas"]["PositionDto"];
-        };
-        PositionBody: {
-            stance?: string | null;
-            /** Format: int32 */
-            weight?: number | null;
-            /** Format: int32 */
-            expectedVersion?: number | null;
-        };
-        CreateSnapshotBody: {
-            name?: string | null;
-            /** Format: date */
-            dateFrom?: string | null;
-            /** Format: date */
-            dateTo?: string | null;
-            /** Format: int32 */
-            session?: number | null;
-            assemblyVoteIds?: string[] | null;
-            excludeVotesWithoutPosition?: boolean | null;
-        };
-        PublishBody: {
-            replace?: boolean | null;
-        };
-        SnapshotCreatedResponse: {
-            /** Format: int64 */
-            snapshotId: number;
-            /** Format: int64 */
-            jobId: number;
-            /** Format: int32 */
-            selectedVotes: number;
-        };
-        VotesWithoutPosition: {
-            /** Format: int32 */
-            count: number;
-            assemblyVoteIds: string[];
-        };
-        SnapshotSummary: {
-            /** Format: int64 */
-            id: number;
-            name: string;
-            status: string;
-            jobStatus: string;
-            phase?: string | null;
-            /** Format: int32 */
-            done: number;
-            /** Format: int32 */
-            total?: number | null;
-            error?: string | null;
-            quarter?: string | null;
-            createdBy: string;
-            /** Format: date-time */
-            createdAt: string;
-            publishedBy?: string | null;
-            /** Format: date-time */
-            publishedAt?: string | null;
-        };
-        SnapshotSelectionDto: {
-            /** Format: date */
-            dateFrom?: string | null;
-            /** Format: date */
-            dateTo?: string | null;
-            /** Format: int32 */
-            session?: number | null;
-            assemblyVoteIds: string[];
-        };
-        SnapshotRulesDto: {
-            version: string;
-            rules: string[];
-        };
-        ExcludedVote: {
-            assemblyVoteId: string;
-            /** Format: int32 */
-            session: number;
-            /** Format: date */
-            voteDate: string;
-            title: string;
-            reason: string;
-        };
-        OutcomeCounts: {
-            /** Format: int32 */
-            matched: number;
-            /** Format: int32 */
-            notMatched: number;
-            /** Format: int32 */
-            abstained: number;
-            /** Format: int32 */
-            absent: number;
-            /** Format: int32 */
-            notAMember: number;
-            /** Format: int32 */
-            noBallot: number;
-        };
-        CountryRanking: {
-            countryCode: string;
-            countryName: string;
-            /** Format: double */
-            score?: number | null;
-            scoreText: string;
-            /** Format: int32 */
-            rank?: number | null;
-            rankText: string;
-            /** Format: int32 */
-            countedWeight: number;
-            /** Format: int32 */
-            matchedWeight: number;
-            votes: components["schemas"]["OutcomeCounts"];
-        };
-        SnapshotDetails: {
-            snapshot: components["schemas"]["SnapshotSummary"];
-            selection: components["schemas"]["SnapshotSelectionDto"];
-            excludeVotesWithoutPosition: boolean;
-            rules: components["schemas"]["SnapshotRulesDto"];
-            /** Format: int32 */
-            includedVotes: number;
-            /** Format: int32 */
-            excludedVoteCount: number;
-            excludedVotes: components["schemas"]["ExcludedVote"][];
-            /** Format: int64 */
-            replacedSnapshotId?: number | null;
-            /** Format: int32 */
-            rankedCountries: number;
-            ranking: components["schemas"]["CountryRanking"][];
-        };
-        VoteContribution: {
-            /** Format: int32 */
-            ordinal: number;
-            assemblyVoteId: string;
-            /** Format: int32 */
-            session: number;
-            /** Format: date */
-            voteDate: string;
-            title: string;
-            desiredOutcome: string;
-            /** Format: int32 */
-            weight: number;
-            ballot?: string | null;
-            outcome: string;
-            counted: boolean;
-            matched: boolean;
-        };
-        CountryBreakdown: {
-            country: components["schemas"]["CountryRanking"];
-            /** Format: int32 */
-            votes: number;
-            items: components["schemas"]["VoteContribution"][];
-            /** Format: int32 */
-            nextAfterOrdinal?: number | null;
-        };
-        SnapshotVoteDto: {
-            /** Format: int64 */
-            voteId: number;
-            /** Format: int32 */
-            ordinal?: number | null;
-            assemblyVoteId: string;
-            /** Format: int32 */
-            session: number;
-            /** Format: date */
-            voteDate: string;
-            title: string;
-            desiredOutcome?: string | null;
-            /** Format: int32 */
-            weight?: number | null;
-            included: boolean;
-            reason?: string | null;
-        };
-        SnapshotVotePage: {
-            items: components["schemas"]["SnapshotVoteDto"][];
-            /** Format: int32 */
-            total: number;
-            /** Format: int64 */
-            nextAfterVoteId?: number | null;
-        };
-        ProblemDetails: {
-            type?: string | null;
-            title?: string | null;
-            /** Format: int32 */
-            status?: number | null;
-            detail?: string | null;
-            instance?: string | null;
-        } & {
-            [key: string]: unknown;
-        };
-        ValidationProblemDetails: {
-            type?: string | null;
-            title?: string | null;
-            /** Format: int32 */
-            status?: number | null;
-            detail?: string | null;
-            instance?: string | null;
-            errors?: {
-                [key: string]: string[];
-            };
-        } & {
-            [key: string]: unknown;
         };
     };
     responses: never;

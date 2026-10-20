@@ -10,7 +10,7 @@ import type { components, paths } from './schema';
 
 // ---------------------------------------------------------------- types from the contract
 
-/** The contract marks no property as required (the C# records have no [Required]); the server always sends them. */
+/** Response types as the screens use them: every property present (the server always sends them, null when empty). */
 export type Strict<T> = T extends readonly (infer U)[] ? Strict<U>[] : T extends object ? { [K in keyof T]-?: Strict<T[K]> } : T;
 
 type Schemas = components['schemas'];
@@ -173,8 +173,14 @@ export const api = {
     list: (o: { status?: string; assemblyVoteId?: string; afterId?: number; take?: number } = {}) =>
       call(client.GET('/api/conflicts', { params: { query: { status: o.status, assemblyVoteId: o.assemblyVoteId, afterId: o.afterId, take: o.take ?? 100 } } })),
     get: (id: number) => call(client.GET('/api/conflicts/{id}', { params: { path: { id } } })),
-    decide: (id: number, body: { decision: 'Approve' | 'Reject'; note?: string; expectedApprovedValue?: string }) =>
-      call(client.POST('/api/conflicts/{id}/decision', { params: { path: { id } }, body })),
+    // The contract lists every body property as required and nullable (C# positional records), so empty ones are sent as null.
+    decide: (id: number, b: { decision: 'Approve' | 'Reject'; note?: string; expectedApprovedValue?: string }) =>
+      call(
+        client.POST('/api/conflicts/{id}/decision', {
+          params: { path: { id } },
+          body: { decision: b.decision, note: b.note ?? null, expectedApprovedValue: b.expectedApprovedValue ?? null },
+        }),
+      ),
   },
   votes: {
     list: (o: { assemblyVoteId?: string; text?: string; session?: number; dateFrom?: string; dateTo?: string; hasPosition?: boolean; afterId?: number; take?: number } = {}) =>
@@ -187,8 +193,19 @@ export const api = {
   snapshots: {
     list: (take = 50) => call(client.GET('/api/snapshots', { params: { query: { take } } })),
     get: (id: number) => call(client.GET('/api/snapshots/{id}', { params: { path: { id } } })),
-    create: (body: { name: string; dateFrom?: string; dateTo?: string; session?: number; assemblyVoteIds?: string[]; excludeVotesWithoutPosition?: boolean }) =>
-      call(client.POST('/api/snapshots', { body })),
+    create: (b: { name: string; dateFrom?: string; dateTo?: string; session?: number; assemblyVoteIds?: string[]; excludeVotesWithoutPosition?: boolean }) =>
+      call(
+        client.POST('/api/snapshots', {
+          body: {
+            name: b.name,
+            dateFrom: b.dateFrom ?? null,
+            dateTo: b.dateTo ?? null,
+            session: b.session ?? null,
+            assemblyVoteIds: b.assemblyVoteIds ?? null,
+            excludeVotesWithoutPosition: b.excludeVotesWithoutPosition ?? null,
+          },
+        }),
+      ),
     country: (id: number, countryCode: string, afterOrdinal = -1, take = 100) =>
       call(client.GET('/api/snapshots/{id}/countries/{countryCode}', { params: { path: { id, countryCode }, query: { afterOrdinal, take } } })),
     publish: (id: number, replace = false) => call(client.PUT('/api/snapshots/{id}/publish', { params: { path: { id } }, body: { replace } })),
