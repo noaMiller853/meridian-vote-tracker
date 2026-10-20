@@ -54,6 +54,8 @@ internal sealed class TestApi : IAsyncDisposable
                 .UseSetting("FileStore:LocalRoot", uploadRoot)
                 .UseSetting("Imports:PollSeconds", "1")
                 .UseSetting("Imports:ProgressIntervalMs", "50")
+                .UseSetting("Snapshots:PollSeconds", "1")
+                .UseSetting("Snapshots:ProgressIntervalMs", "50")
                 .ConfigureTestServices(s => services?.Invoke(s));
             foreach (var (key, value) in settings ?? new Dictionary<string, string>())
                 b.UseSetting(key, value);
@@ -149,6 +151,10 @@ internal sealed class TestApi : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         await Factory.DisposeAsync();
+        // The test's own connections (Db(), NpgsqlConnection) sit in Npgsql's global pool for this database and stay
+        // open for minutes after the test; with a database per test they used up the server's 100 connections.
+        await using (var connection = new Npgsql.NpgsqlConnection(ConnectionString))
+            Npgsql.NpgsqlConnection.ClearPool(connection);
         try { Directory.Delete(UploadRoot, recursive: true); } catch (IOException) { }
     }
 }
