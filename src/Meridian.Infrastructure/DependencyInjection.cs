@@ -1,3 +1,4 @@
+using Meridian.Infrastructure.Cloud;
 using Meridian.Infrastructure.Files;
 using Meridian.Infrastructure.Imports;
 using Meridian.Infrastructure.Persistence;
@@ -9,6 +10,7 @@ using Npgsql;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace Meridian.Infrastructure;
 
@@ -38,8 +40,24 @@ public static class DependencyInjection
         // Registered before the import worker: StartingAsync migrates and seeds before any worker starts.
         services.AddHostedService<DatabaseInitializerService>();
 
-        services.Configure<FileStoreOptions>(configuration.GetSection("FileStore"));
-        services.AddSingleton<IFileStore, LocalFileStore>();
+        // Every Azure client authenticates through this factory (a configured token per resource, else DefaultAzureCredential).
+        services.AddSingleton<AzureCredentialFactory>();
+
+        // Local (default) or AzureBlob; a wrong setting stops startup instead of failing the first upload.
+        services.AddOptions<FileStoreOptions>()
+            .Bind(configuration.GetSection("FileStore"))
+            .Validate(o => o.Provider is FileStoreOptions.ProviderLocal or FileStoreOptions.ProviderAzureBlob,
+                $"FileStore:Provider must be {FileStoreOptions.ProviderLocal} or {FileStoreOptions.ProviderAzureBlob}.")
+            .Validate(o => o.Provider != FileStoreOptions.ProviderAzureBlob ||
+                           Uri.TryCreate(o.BlobServiceUri, UriKind.Absolute, out var uri) && uri.Scheme is "https" or "http",
+                "FileStore:Provider is AzureBlob, so FileStore:BlobServiceUri must be the account's blob endpoint, for example https://<account>.blob.core.windows.net.")
+            .Validate(o => o.Provider != FileStoreOptions.ProviderAzureBlob || !string.IsNullOrWhiteSpace(o.Container),
+                "FileStore:Provider is AzureBlob, so FileStore:Container must be set, for example uploads.")
+            .ValidateOnStart();
+        services.AddSingleton<IFileStore>(sp =>
+            sp.GetRequiredService<IOptions<FileStoreOptions>>().Value.Provider == FileStoreOptions.ProviderAzureBlob
+                ? ActivatorUtilities.CreateInstance<AzureBlobFileStore>(sp)
+                : ActivatorUtilities.CreateInstance<LocalFileStore>(sp));
 
         services.Configure<ImportOptions>(configuration.GetSection("Imports"));
         services.AddSingleton<ImportSignal>();

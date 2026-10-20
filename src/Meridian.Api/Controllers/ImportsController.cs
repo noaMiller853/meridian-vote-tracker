@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Meridian.Api.Http;
+using Meridian.Infrastructure.Files;
 using Meridian.Infrastructure.Imports;
 using Meridian.Infrastructure.Persistence;
 using Meridian.Infrastructure.Persistence.Entities;
@@ -10,7 +11,7 @@ namespace Meridian.Api.Controllers;
 
 [ApiController]
 [Route("api/imports")]
-public sealed class ImportsController(MeridianDbContext db, CurrentUser user) : ControllerBase
+public sealed class ImportsController(MeridianDbContext db, CurrentUser user, ILogger<ImportsController> logger) : ControllerBase
 {
     /// <summary>The historic file is about 100 MB.</summary>
     private const long MaxUploadBytes = 250L * 1024 * 1024;
@@ -22,6 +23,7 @@ public sealed class ImportsController(MeridianDbContext db, CurrentUser user) : 
     [ProducesResponseType<ImportCreatedResponse>(StatusCodes.Status202Accepted)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> Upload(IFormFile? file, [FromServices] ImportService imports, CancellationToken ct)
     {
         if (file is null || file.Length == 0)
@@ -30,7 +32,18 @@ public sealed class ImportsController(MeridianDbContext db, CurrentUser user) : 
 
         // Analyst and Admin may both upload (spec section 3).
         await using var content = file.OpenReadStream();
-        var created = await imports.CreateAsync(content, file.FileName, user.Id, HttpContext.GetCorrelationId(), ct);
+        ImportCreated created;
+        try
+        {
+            created = await imports.CreateAsync(content, file.FileName, user.Id, HttpContext.GetCorrelationId(), ct);
+        }
+        catch (FileStoreUnavailableException e)
+        {
+            logger.LogError(e, "The file store refused the upload of {FileName}.", file.FileName);
+            return Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "File store unavailable",
+                detail: "The file could not be stored, for example because the Azure access token has expired or lacks a blob " +
+                        "data role. Nothing was imported. Details are in the server log.");
+        }
 
         return AcceptedAtAction(nameof(Get), new { id = created.ImportId },
             new ImportCreatedResponse(created.ImportId, created.JobId, BackgroundJob.StatusQueued));

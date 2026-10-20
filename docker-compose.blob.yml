@@ -1,0 +1,12 @@
+# Store uploaded files in Azure Blob Storage instead of the local volume (Microsoft Entra auth; the account has key
+# access disabled, so there is no connection string):
+#   docker compose -f docker-compose.yml -f docker-compose.blob.yml up --build
+# The account and container come from .env (git-ignored). The access token is short-lived (about an hour) and is set in
+# the terminal, never in a file: see README "Blob Storage". Nothing secret is stored here.
+services:
+  api:
+    environment:
+      FileStore__Provider: AzureBlob
+      FileStore__BlobServiceUri: ${AZURE_BLOB_SERVICE_URI:?Set AZURE_BLOB_SERVICE_URI in .env, for example https://<account>.blob.core.windows.net}
+      FileStore__Container: ${AZURE_BLOB_CONTAINER:?Set AZURE_BLOB_CONTAINER in .env, for example uploads}
+      Azure__StorageAccessToken: ${AZURE_STORAGE_ACCESS_TOKEN:?Set AZURE_STORAGE_ACCESS_TOKEN in the terminal (README, Blob Storage)}

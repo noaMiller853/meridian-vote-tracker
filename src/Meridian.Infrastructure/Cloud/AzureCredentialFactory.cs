@@ -1,0 +1,68 @@
+using System.Text;
+using System.Text.Json;
+using Azure.Core;
+using Azure.Identity;
+using Microsoft.Extensions.Configuration;
+
+namespace Meridian.Infrastructure.Cloud;
+
+/// <summary>The Azure resources the API talks to with Microsoft Entra authentication. A token is issued for one of them.</summary>
+public enum AzureResource { Storage, KeyVault }
+
+/// <summary>
+/// One place that decides how every Azure client authenticates. If configuration holds an access token for the client's
+/// resource (local Docker runs, where there is no az login: a short-lived token pasted from the terminal), it is used as
+/// a static token. Otherwise <see cref="DefaultAzureCredential"/> (managed identity, environment, Azure CLI ...).
+/// A token is never in a committed file.
+/// </summary>
+public sealed class AzureCredentialFactory(IConfiguration configuration)
+{
+    public const string StorageAccessTokenSetting = "Azure:StorageAccessToken";
+    public const string KeyVaultAccessTokenSetting = "Azure:KeyVaultAccessToken";
+
+    private readonly Lazy<TokenCredential> _default = new(() => new DefaultAzureCredential());
+
+    public static string SettingFor(AzureResource resource) => resource switch
+    {
+        AzureResource.Storage => StorageAccessTokenSetting,
+        AzureResource.KeyVault => KeyVaultAccessTokenSetting,
+        _ => throw new ArgumentOutOfRangeException(nameof(resource)),
+    };
+
+    public TokenCredential Create(AzureResource resource)
+    {
+        var token = configuration[SettingFor(resource)];
+        return string.IsNullOrWhiteSpace(token) ? _default.Value : new StaticTokenCredential(token.Trim());
+    }
+}
+
+/// <summary>
+/// A token obtained elsewhere (for example <c>az account get-access-token</c> in Cloud Shell). It is not refreshed: when it
+/// expires (about an hour), Azure answers 401 and the API reports the file store as unavailable until it is restarted
+/// with a new token.
+/// </summary>
+public sealed class StaticTokenCredential(string token) : TokenCredential
+{
+    private readonly AccessToken _token = new(token, ExpiresOn(token));
+
+    public override AccessToken GetToken(TokenRequestContext requestContext, CancellationToken cancellationToken) => _token;
+
+    public override ValueTask<AccessToken> GetTokenAsync(TokenRequestContext requestContext, CancellationToken cancellationToken) =>
+        ValueTask.FromResult(_token);
+
+    /// <summary>The <c>exp</c> claim of the JWT; one hour from now when it cannot be read.</summary>
+    public static DateTimeOffset ExpiresOn(string token)
+    {
+        try
+        {
+            var payload = token.Split('.')[1].Replace('-', '+').Replace('_', '/');
+            payload = payload.PadRight(payload.Length + (4 - payload.Length % 4) % 4, '=');
+            using var json = JsonDocument.Parse(Encoding.UTF8.GetString(Convert.FromBase64String(payload)));
+            return DateTimeOffset.FromUnixTimeSeconds(json.RootElement.GetProperty("exp").GetInt64());
+        }
+        catch (Exception e) when (e is IndexOutOfRangeException or FormatException or JsonException or KeyNotFoundException or InvalidOperationException)
+        {
+            return DateTimeOffset.UtcNow.AddHours(1);
+        }
+    }
+}

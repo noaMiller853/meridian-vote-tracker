@@ -180,7 +180,7 @@ Uploaded files are kept in `FileStore:LocalRoot` (Development: `data/uploads` at
 - Users: Dana (Analyst), Omar (Analyst), Lena (Admin), added on startup. Switch user from the menu at the top of the screen.
 
 ## Configuration and secrets
-No secrets in the repository. Local values live in `.env` or `dotnet user-secrets`; in Docker and Azure the settings are environment variables (`ConnectionStrings__Default`, `Database__MigrateOnStartup`, `Seed__MemberStatesPath`, `FileStore__LocalRoot`, `APPLICATIONINSIGHTS_CONNECTION_STRING`).
+No secrets in the repository. Local values live in `.env` or `dotnet user-secrets`; in Docker and Azure the settings are environment variables (`ConnectionStrings__Default`, `Database__MigrateOnStartup`, `Seed__MemberStatesPath`, `FileStore__LocalRoot`, `FileStore__Provider`, `APPLICATIONINSIGHTS_CONNECTION_STRING`).
 
 **Application Insights** (optional). Put the resource's connection string (portal > the Application Insights resource > Overview > Connection String) in `.env` as `APPLICATIONINSIGHTS_CONNECTION_STRING=...`; `docker compose up` passes it to the API. When it is set, the API sends its requests and logs to Application Insights (Azure Monitor OpenTelemetry, all requests kept). When it is missing or empty, nothing is registered and the API logs to the console only. Each request and the background job it starts carry the correlation id (`X-Correlation-Id`) as the property `CorrelationId`, so one query finds the whole story:
 
@@ -190,7 +190,22 @@ union requests, traces
 | order by timestamp asc
 ```
 
-Other Azure settings: the connection string is the only setting needed to point the API at Azure Database for PostgreSQL (not verified, see DECISIONS.md section 4). `AZURE_STORAGE_CONNECTION_STRING` in `.env.example` is a placeholder; nothing reads it.
+**Blob Storage** (optional; local files stay the default). Uploaded files can be kept in an Azure Blob Storage container instead of the `meridian-uploads` volume. The storage account allows only Microsoft Entra authentication (key access disabled), so there is no connection string: the API uses an access token, and your account needs a blob data role (for example Storage Blob Data Contributor) on the account or the container.
+
+1. In `.env` (not secret): `AZURE_BLOB_SERVICE_URI=https://<account>.blob.core.windows.net` and `AZURE_BLOB_CONTAINER=uploads`.
+2. Get a storage token in Azure Cloud Shell (portal > Cloud Shell), and copy it:
+   ```
+   az account get-access-token --resource https://storage.azure.com/ --query accessToken -o tsv
+   ```
+3. In the same terminal where you start compose (PowerShell), set it and start with the Blob override:
+   ```
+   $env:AZURE_STORAGE_ACCESS_TOKEN = '<paste the token>'
+   docker compose -f docker-compose.yml -f docker-compose.blob.yml up --build
+   ```
+
+The token lasts about an hour and is not refreshed: after that an upload answers 503 "File store unavailable" (an expired token gives 401 in the server log, a missing data role 403). Get a new token and start again. Outside Docker (a managed identity in Azure, or `az login` on the machine), leave the token out: the API then uses `DefaultAzureCredential`. Settings: `FileStore:Provider` (`Local` or `AzureBlob`), `FileStore:BlobServiceUri`, `FileStore:Container`, `Azure:StorageAccessToken`; a wrong combination stops the API at startup with a clear message. Files are stored once per content as `{sha256}.csv`; files stored by one provider cannot be read after switching to the other.
+
+Azure Database for PostgreSQL: the connection string is the only setting needed to point the API at it (not verified, see DECISIONS.md section 4).
 
 ## Documents
 - `DECISIONS.md`: decisions, trade-offs, scoring rules (2 pages)
