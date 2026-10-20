@@ -22,6 +22,10 @@ public sealed class SwaggerUiTests(PostgresFixture fixture)
             (scheme.GetProperty("type").GetString(), scheme.GetProperty("in").GetString(), scheme.GetProperty("name").GetString()));
         Assert.True(doc.RootElement.GetProperty("security")[0].TryGetProperty("X-User", out _));
 
+        // No "servers": inside Docker it would be Kestrel's own address (http://[::]:8080), which a browser cannot
+        // reach, so "Try it out" and the generated client must use the address the page came from.
+        Assert.False(doc.RootElement.TryGetProperty("servers", out var servers) && servers.GetArrayLength() > 0);
+
         var upload = doc.RootElement.GetProperty("paths").GetProperty("/api/imports").GetProperty("post")
             .GetProperty("requestBody").GetProperty("content").GetProperty("multipart/form-data")
             .GetProperty("schema").GetProperty("properties").GetProperty("file");
