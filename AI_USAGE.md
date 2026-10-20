@@ -2,7 +2,8 @@
 
 ## Tools
 - **Claude (chat, claude.ai):** requirement analysis, planning, drafting DECISIONS.md and CLAUDE.md.
-- **Claude Code:** implementation. TODO: describe what it was used for.
+- **Claude Code:** implementation of the back end step by step (schema and migrations, ingestion pipeline, conflicts, positions, snapshots, tests). Each step was planned first and reviewed after.
+- **Claude (chat), later in the project:** Docker setup (API Dockerfile, compose), fixing the test failures, the Angular client in `src/web`, and shortening DECISIONS.md to two pages.
 
 ## Where I rejected or corrected AI output
 Add a row whenever something is rejected, fixed or changed. It is hard to reconstruct at the end.
@@ -32,4 +33,9 @@ Add a row whenever something is rejected, fixed or changed. It is hard to recons
 | Step 4 hardening | Stored and returned the exception message when an import failed unexpectedly | A generic message with the correlation id as reference; the exception only goes to the server log | Exception messages can contain SQL, paths or data |
 | Step 4b review | Claude reported the 4 historic votes in Contradiction as "one row carries a shortened title" and listed the same 4 lines a second time as a separate "shifted columns" finding | I checked the raw lines (521760, 687843, 736765, 922345): an unquoted comma in the title shifts every field by one, and the title is identical to the other rows. Fixed the rule: only valid rows decide a vote's details; structurally valid rows only when the vote has no valid row; Invalid rows never cause a Contradiction or open a vote-field conflict | A rejected row must not cost the rest of its vote (ING-07); read the raw data before naming a cause |
 | Step 4b review | Claude predicted 36 Invalid and 962,106 New after the fix | The re-run gave 32 Invalid and 962,109 New (+1 Duplicate) | The 4 lines were already counted as Invalid, and one of the 597 rows is a duplicate; check the arithmetic against the data |
-| | | | |
+| Tests | The integration tests opened too many database connections (18 failures, `53300 too many clients`) | Raised `max_connections` in the test container and cleared the connection pools | The failures were test infrastructure, not product bugs; all 336 tests pass |
+| Docker | The compose snippet used a volume `meridian-uploads` without declaring it, and the API had no Dockerfile | Declared the volume and added `src/Meridian.Api/Dockerfile` | `docker compose` refused to start; the assignment needs one command to run everything |
+| Docker | Said Swagger failed at `http://[::]:8080` because of how the page was opened | Found by testing: the OpenAPI `servers` list contained Kestrel's internal address. The API now clears it | The first explanation was wrong; the request really went to the wrong server |
+| Front end | The Angular client was built where neither .NET nor Docker was available, so `openapi.json` was derived by hand from the C# code | The types are generated from it, but I replace it with the real document using `npm run api`, and `npm run build` shows any mismatch | The assignment wants the client generated from the contract, not written by hand |
+| Front end | The UI was checked only against a mock API | Run the full flow against the real API in Docker before submitting | A mock proves the screens, not the integration |
+| Documents | The first DECISIONS.md was about 6,000 words and claimed Blob Storage | Moved to `docs/DECISIONS-DETAIL.md`; a 2-page DECISIONS.md says that only local storage exists | The limit is two pages and the text must match the code |

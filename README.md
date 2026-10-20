@@ -3,20 +3,49 @@
 Home assignment: system for ingesting Assembly voting exports, resolving conflicts, and publishing reproducible Alignment Index snapshots.
 Stack: ASP.NET Core, PostgreSQL, Angular, Docker Compose.
 
-> Draft. Sections marked TODO are completed as the system is built.
-
 ## Prerequisites
-- .NET SDK 8 or later
-- Node.js and Angular CLI
-- Docker Desktop (running)
+- Docker Desktop (running). This is all you need to run the system.
+- For development without Docker: .NET SDK 9 and Node.js 22.22.3 or newer (or 24.15+), as Angular 22 requires.
 
 ## Run
-1. Optional: copy `.env.example` to `.env`.
-2. Start the database: `docker compose up -d db`
-3. Start the API (applies migrations and seed data in Development, see Database setup): `dotnet run --project src/Meridian.Api`
-4. Start the web app: `cd src/web && ng serve`
+One command starts everything (PostgreSQL, the API and the web client):
 
-TODO: replace steps 2 to 4 with a single `docker compose up` once the API and web services are in the compose file.
+```
+docker compose up --build
+```
+
+| What | Address |
+|---|---|
+| Web client (Angular, served by nginx) | http://localhost:4200 |
+| API | http://localhost:5284 (`/health`) |
+| Swagger UI and OpenAPI document (Development) | http://localhost:5284/swagger , http://localhost:5284/openapi/v1.json |
+
+The API applies the migrations and loads the countries and users by itself on start, so a fresh machine needs no manual step. The web client sends `/api` to the API through nginx, so no CORS is needed. Uploaded files are kept in the Docker volume `meridian-uploads`, the database in `meridian-db-data`. `docker compose down -v` deletes both.
+
+Optional: copy `.env.example` to `.env` to change the database name, user, password or port.
+
+### Development without Docker for the API or the web client
+```
+docker compose up -d db                # only the database
+dotnet run --project src/Meridian.Api  # API on http://localhost:5284 (see Database setup)
+cd src/web
+npm install
+npm start                              # http://localhost:4200, /api is proxied to the API
+```
+
+## Web client (`src/web`)
+Angular 22 with the four screens of the assignment: Imports, Review, Votes, Snapshots. The user switcher at the top sends the `X-User` header.
+
+The API client is not written by hand: `openapi-typescript` generates the types from the API's OpenAPI document and `openapi-fetch` uses them, so the compiler checks every path, parameter and body. After any API change:
+
+```
+cd src/web
+npm run api      # downloads http://localhost:5284/openapi/v1.json, regenerates src/app/api/schema.d.ts
+npm run build    # fails where a screen no longer matches the contract
+npm test         # unit tests
+```
+
+More in `src/web/README.md`.
 
 ## Database setup
 The API reads the connection string `ConnectionStrings:Default` from configuration and fails at startup if it is missing. It is never in code or in `appsettings*.json`.
@@ -101,12 +130,13 @@ Uploaded files are kept in `FileStore:LocalRoot` (Development: `data/uploads` at
 - Users: Dana (Analyst), Omar (Analyst), Lena (Admin), added on startup. Switch user from the menu at the top of the screen.
 
 ## Configuration and secrets
-No secrets in the repository. Local values live in `.env` or `dotnet user-secrets`. Azure resources are connected through configuration only (see `.env.example`).
+No secrets in the repository. Local values live in `.env` or `dotnet user-secrets`; in Docker and Azure the settings are environment variables (`ConnectionStrings__Default`, `Database__MigrateOnStartup`, `Seed__MemberStatesPath`, `FileStore__LocalRoot`).
 
-TODO: list the Azure settings that are used.
+Azure: the system runs fully locally and does not use any Azure resource yet. The connection string is the only setting needed to point the API at Azure Database for PostgreSQL. `AZURE_STORAGE_CONNECTION_STRING` and `APPLICATIONINSIGHTS_CONNECTION_STRING` in `.env.example` are placeholders; nothing reads them yet (see DECISIONS.md, section 4).
 
 ## Documents
-- `DECISIONS.md`: decisions, trade-offs, scoring rules
+- `DECISIONS.md`: decisions, trade-offs, scoring rules (2 pages)
+- `docs/DECISIONS-DETAIL.md`: the long working notes behind it
 - `docs/DATABASE.md`: database schema
 - `AI_USAGE.md`: AI tools used and what was corrected
 - `CLAUDE.md`: project instructions for Claude Code

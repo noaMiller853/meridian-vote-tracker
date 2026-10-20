@@ -1,0 +1,2824 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Meridian.Api | v1",
+    "version": "1.0.0",
+    "description": "Contract of the Meridian API. Regenerate from the running API with `npm run api` (downloads /openapi/v1.json) and then `npm run gen:api`; the TypeScript types in src/app/api/schema.d.ts come from this file."
+  },
+  "paths": {
+    "/api/imports": {
+      "post": {
+        "tags": [
+          "Imports"
+        ],
+        "summary": "Upload an Assembly export (CSV)",
+        "responses": {
+          "202": {
+            "description": "Accepted: processed in the background",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportCreatedResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "No file",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unknown user",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              },
+              "encoding": {
+                "file": {
+                  "style": "form"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Imports"
+        ],
+        "summary": "Import history, newest first",
+        "parameters": [
+          {
+            "name": "take",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ImportSummary"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/imports/{id}": {
+      "get": {
+        "tags": [
+          "Imports"
+        ],
+        "summary": "One import with live progress",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/imports/{importId}/report": {
+      "get": {
+        "tags": [
+          "ImportReport"
+        ],
+        "summary": "Stored import report",
+        "parameters": [
+          {
+            "name": "importId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportReport"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/imports/{importId}/rows": {
+      "get": {
+        "tags": [
+          "ImportReport"
+        ],
+        "summary": "Rows of the import with class, reason and original value",
+        "parameters": [
+          {
+            "name": "importId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "class",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "vote",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "after",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "take",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportRowPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Unknown class",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/imports/{importId}/votes": {
+      "get": {
+        "tags": [
+          "ImportReport"
+        ],
+        "summary": "What happened in each vote of the import",
+        "parameters": [
+          {
+            "name": "importId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "after",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "take",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportVotePage"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/imports/{importId}/vote": {
+      "get": {
+        "tags": [
+          "ImportReport"
+        ],
+        "summary": "One vote of the import with all its rows",
+        "parameters": [
+          {
+            "name": "importId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "assemblyVoteId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportVoteDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/conflicts": {
+      "get": {
+        "tags": [
+          "Conflicts"
+        ],
+        "summary": "Conflicts, oldest first (default: Pending)",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "assemblyVoteId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "afterId",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "take",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error: errors are listed under the request field name",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/conflicts/{id}": {
+      "get": {
+        "tags": [
+          "Conflicts"
+        ],
+        "summary": "One conflict with both sides",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/conflicts/{id}/decision": {
+      "post": {
+        "tags": [
+          "Conflicts"
+        ],
+        "summary": "Approve or reject a conflict",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictDetails"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error: errors are listed under the request field name",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed for this role",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state; the problem carries the current state",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecisionBody"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/votes": {
+      "get": {
+        "tags": [
+          "Votes"
+        ],
+        "summary": "Votes with position and open conflicts",
+        "parameters": [
+          {
+            "name": "assemblyVoteId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "text",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "session",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "dateFrom",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "dateTo",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "hasPosition",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "afterId",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "take",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VotePage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error: errors are listed under the request field name",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/votes/{id}": {
+      "get": {
+        "tags": [
+          "Votes"
+        ],
+        "summary": "One vote with its country votes",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoteView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/votes/{id}/timeline": {
+      "get": {
+        "tags": [
+          "Votes"
+        ],
+        "summary": "Full history of one vote",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoteTimeline"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/votes/{id}/position": {
+      "put": {
+        "tags": [
+          "Votes"
+        ],
+        "summary": "Set the stance and weight of a vote (Admin only)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PositionResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error: errors are listed under the request field name",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed for this role",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state; the problem carries the current state",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PositionBody"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/snapshots": {
+      "post": {
+        "tags": [
+          "Snapshots"
+        ],
+        "summary": "Create a snapshot from a selection of votes",
+        "responses": {
+          "202": {
+            "description": "Accepted: calculated in the background",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SnapshotCreatedResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error: errors are listed under the request field name",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed for this role",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state; the problem carries the current state",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSnapshotBody"
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Snapshots"
+        ],
+        "summary": "Snapshots, newest first",
+        "parameters": [
+          {
+            "name": "take",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SnapshotSummary"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/snapshots/{id}": {
+      "get": {
+        "tags": [
+          "Snapshots"
+        ],
+        "summary": "One snapshot with its ranking",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SnapshotDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/snapshots/{id}/countries/{countryCode}": {
+      "get": {
+        "tags": [
+          "Snapshots"
+        ],
+        "summary": "How one country score was calculated",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "countryCode",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "afterOrdinal",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "take",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CountryBreakdown"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/snapshots/{id}/votes": {
+      "get": {
+        "tags": [
+          "Snapshots"
+        ],
+        "summary": "The frozen votes of a snapshot",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "included",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "afterVoteId",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "take",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SnapshotVotePage"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/snapshots/{id}/publish": {
+      "put": {
+        "tags": [
+          "Snapshots"
+        ],
+        "summary": "Publish a snapshot for its quarter (Admin only)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SnapshotDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed for this role",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state; the problem carries the current state",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublishBody"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ImportCreatedResponse": {
+        "type": "object",
+        "properties": {
+          "importId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "jobId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "importId",
+          "jobId",
+          "status"
+        ]
+      },
+      "ImportCounts": {
+        "type": "object",
+        "properties": {
+          "new": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "unchanged": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "duplicate": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "invalid": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "contradiction": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "conflict": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "normalized": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "required": [
+          "new",
+          "unchanged",
+          "duplicate",
+          "invalid",
+          "contradiction",
+          "conflict",
+          "normalized"
+        ]
+      },
+      "ImportSummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "sha256": {
+            "type": "string"
+          },
+          "uploadedBy": {
+            "type": "string"
+          },
+          "uploadedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "publishedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "status": {
+            "type": "string"
+          },
+          "phase": {
+            "type": "string",
+            "nullable": true
+          },
+          "done": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "total": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "error": {
+            "type": "string",
+            "nullable": true
+          },
+          "finishedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "counts": {
+            "$ref": "#/components/schemas/ImportCounts"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "fileName",
+          "label",
+          "sha256",
+          "uploadedBy",
+          "uploadedAt",
+          "status",
+          "done",
+          "counts"
+        ]
+      },
+      "ImportDetails": {
+        "type": "object",
+        "properties": {
+          "import": {
+            "$ref": "#/components/schemas/ImportSummary"
+          },
+          "report": {}
+        },
+        "required": [
+          "import"
+        ]
+      },
+      "ImportReport": {
+        "type": "object",
+        "properties": {
+          "importId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/ImportCounts"
+          },
+          "summary": {}
+        },
+        "required": [
+          "importId",
+          "fileName",
+          "status",
+          "counts"
+        ]
+      },
+      "ImportRowDto": {
+        "type": "object",
+        "properties": {
+          "line": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "classification": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "originalValue": {
+            "type": "string",
+            "nullable": true
+          },
+          "conflictAction": {
+            "type": "string",
+            "nullable": true
+          },
+          "assemblyVoteId": {
+            "type": "string",
+            "nullable": true
+          },
+          "countryCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "originalCountryCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "ballot": {
+            "type": "string",
+            "nullable": true
+          },
+          "rawLine": {
+            "type": "string"
+          },
+          "problems": {},
+          "normalizations": {}
+        },
+        "required": [
+          "line",
+          "classification",
+          "rawLine"
+        ]
+      },
+      "ImportRowPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportRowDto"
+            }
+          },
+          "nextAfter": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "ImportVoteCounts": {
+        "type": "object",
+        "properties": {
+          "new": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "unchanged": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "duplicate": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "invalid": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "contradiction": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "conflict": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "required": [
+          "new",
+          "unchanged",
+          "duplicate",
+          "invalid",
+          "contradiction",
+          "conflict"
+        ]
+      },
+      "ImportVoteDto": {
+        "type": "object",
+        "properties": {
+          "assemblyVoteId": {
+            "type": "string"
+          },
+          "voteId": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "status": {
+            "type": "string"
+          },
+          "voteCreated": {
+            "type": "boolean"
+          },
+          "rows": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/ImportVoteCounts"
+          },
+          "conflictsOpened": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "conflictsAlreadyPending": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "conflictsAlreadyRejected": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "conflictsAlreadySuperseded": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "fieldConflicts": {},
+          "contradictionReason": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "assemblyVoteId",
+          "status",
+          "voteCreated",
+          "rows",
+          "counts",
+          "conflictsOpened",
+          "conflictsAlreadyPending",
+          "conflictsAlreadyRejected",
+          "conflictsAlreadySuperseded"
+        ]
+      },
+      "ImportVotePage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportVoteDto"
+            }
+          },
+          "nextAfter": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "ImportVoteDetails": {
+        "type": "object",
+        "properties": {
+          "vote": {
+            "$ref": "#/components/schemas/ImportVoteDto"
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportRowDto"
+            }
+          }
+        },
+        "required": [
+          "vote",
+          "rows"
+        ]
+      },
+      "ValueSource": {
+        "type": "object",
+        "properties": {
+          "importId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "uploadedBy": {
+            "type": "string"
+          },
+          "uploadedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "publishedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "required": [
+          "importId",
+          "fileName",
+          "uploadedBy",
+          "uploadedAt"
+        ]
+      },
+      "ConflictSide": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string"
+          },
+          "source": {
+            "$ref": "#/components/schemas/ValueSource"
+          },
+          "line": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          }
+        },
+        "required": [
+          "value",
+          "source"
+        ]
+      },
+      "ApprovedChange": {
+        "type": "object",
+        "properties": {
+          "conflictId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "value": {
+            "type": "string"
+          },
+          "decidedBy": {
+            "type": "string"
+          },
+          "decidedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "conflictId",
+          "value",
+          "decidedBy",
+          "decidedAt"
+        ]
+      },
+      "CurrentApprovedValue": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string"
+          },
+          "isStale": {
+            "type": "boolean"
+          },
+          "changedBy": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ApprovedChange"
+              }
+            ]
+          }
+        },
+        "required": [
+          "value",
+          "isStale"
+        ]
+      },
+      "ConflictDecisionDto": {
+        "type": "object",
+        "properties": {
+          "decision": {
+            "type": "string"
+          },
+          "decidedBy": {
+            "type": "string"
+          },
+          "decidedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          },
+          "replacedValue": {
+            "type": "string",
+            "nullable": true
+          },
+          "replacedSource": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ValueSource"
+              }
+            ]
+          }
+        },
+        "required": [
+          "decision",
+          "decidedBy",
+          "decidedAt"
+        ]
+      },
+      "ConflictVote": {
+        "type": "object",
+        "properties": {
+          "voteId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "assemblyVoteId": {
+            "type": "string"
+          },
+          "session": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "voteDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "voteId",
+          "assemblyVoteId",
+          "session",
+          "voteDate",
+          "title"
+        ]
+      },
+      "ConflictDetails": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "status": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "vote": {
+            "$ref": "#/components/schemas/ConflictVote"
+          },
+          "countryCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "countryName": {
+            "type": "string",
+            "nullable": true
+          },
+          "fieldName": {
+            "type": "string",
+            "nullable": true
+          },
+          "approved": {
+            "$ref": "#/components/schemas/ConflictSide"
+          },
+          "proposed": {
+            "$ref": "#/components/schemas/ConflictSide"
+          },
+          "current": {
+            "$ref": "#/components/schemas/CurrentApprovedValue"
+          },
+          "decision": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ConflictDecisionDto"
+              }
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "kind",
+          "vote",
+          "approved",
+          "proposed",
+          "current",
+          "createdAt"
+        ]
+      },
+      "ConflictListItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "status": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "voteId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "assemblyVoteId": {
+            "type": "string"
+          },
+          "countryCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "countryName": {
+            "type": "string",
+            "nullable": true
+          },
+          "fieldName": {
+            "type": "string",
+            "nullable": true
+          },
+          "approvedValue": {
+            "type": "string"
+          },
+          "proposedValue": {
+            "type": "string"
+          },
+          "proposedFileName": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "decidedBy": {
+            "type": "string",
+            "nullable": true
+          },
+          "decidedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "kind",
+          "voteId",
+          "assemblyVoteId",
+          "approvedValue",
+          "proposedValue",
+          "proposedFileName",
+          "createdAt"
+        ]
+      },
+      "ConflictPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConflictListItem"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "nextAfterId": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ]
+      },
+      "DecisionBody": {
+        "type": "object",
+        "properties": {
+          "decision": {
+            "type": "string",
+            "nullable": true
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          },
+          "expectedApprovedValue": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "ImportRef": {
+        "type": "object",
+        "properties": {
+          "importId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "fileName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "importId",
+          "fileName"
+        ]
+      },
+      "PositionDto": {
+        "type": "object",
+        "properties": {
+          "stance": {
+            "type": "string"
+          },
+          "weight": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "setBy": {
+            "type": "string"
+          },
+          "setAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "stance",
+          "weight",
+          "version",
+          "setBy",
+          "setAt"
+        ]
+      },
+      "VoteSummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "assemblyVoteId": {
+            "type": "string"
+          },
+          "session": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "voteDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "title": {
+            "type": "string"
+          },
+          "countryVotes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "hasPosition": {
+            "type": "boolean"
+          },
+          "position": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PositionDto"
+              }
+            ]
+          },
+          "pendingConflicts": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "required": [
+          "id",
+          "assemblyVoteId",
+          "session",
+          "voteDate",
+          "title",
+          "countryVotes",
+          "hasPosition",
+          "pendingConflicts"
+        ]
+      },
+      "VotePage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VoteSummary"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "nextAfterId": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ]
+      },
+      "VoteDetailSources": {
+        "type": "object",
+        "properties": {
+          "session": {
+            "$ref": "#/components/schemas/ImportRef"
+          },
+          "voteDate": {
+            "$ref": "#/components/schemas/ImportRef"
+          },
+          "title": {
+            "$ref": "#/components/schemas/ImportRef"
+          }
+        },
+        "required": [
+          "session",
+          "voteDate",
+          "title"
+        ]
+      },
+      "CountryVoteDto": {
+        "type": "object",
+        "properties": {
+          "countryCode": {
+            "type": "string"
+          },
+          "countryName": {
+            "type": "string"
+          },
+          "ballot": {
+            "type": "string"
+          },
+          "source": {
+            "$ref": "#/components/schemas/ImportRef"
+          },
+          "sourceLine": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "approvedBy": {
+            "type": "string"
+          },
+          "approvedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "changedByDecision": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "countryCode",
+          "countryName",
+          "ballot",
+          "source",
+          "sourceLine",
+          "approvedBy",
+          "approvedAt",
+          "changedByDecision"
+        ]
+      },
+      "VoteView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "assemblyVoteId": {
+            "type": "string"
+          },
+          "session": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "voteDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "title": {
+            "type": "string"
+          },
+          "firstImport": {
+            "$ref": "#/components/schemas/ImportRef"
+          },
+          "sources": {
+            "$ref": "#/components/schemas/VoteDetailSources"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "hasPosition": {
+            "type": "boolean"
+          },
+          "position": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PositionDto"
+              }
+            ]
+          },
+          "pendingConflicts": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "countryVotes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CountryVoteDto"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "assemblyVoteId",
+          "session",
+          "voteDate",
+          "title",
+          "firstImport",
+          "sources",
+          "createdAt",
+          "hasPosition",
+          "pendingConflicts",
+          "countryVotes"
+        ]
+      },
+      "TimelineEntry": {
+        "type": "object",
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "action": {
+            "type": "string"
+          },
+          "actor": {
+            "type": "string"
+          },
+          "import": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ImportRef"
+              }
+            ]
+          },
+          "conflictId": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "summary": {
+            "type": "string"
+          },
+          "oldValue": {},
+          "newValue": {}
+        },
+        "required": [
+          "at",
+          "action",
+          "actor",
+          "summary"
+        ]
+      },
+      "VoteTimeline": {
+        "type": "object",
+        "properties": {
+          "voteId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "assemblyVoteId": {
+            "type": "string"
+          },
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TimelineEntry"
+            }
+          }
+        },
+        "required": [
+          "voteId",
+          "assemblyVoteId",
+          "entries"
+        ]
+      },
+      "PositionResult": {
+        "type": "object",
+        "properties": {
+          "changed": {
+            "type": "boolean"
+          },
+          "position": {
+            "$ref": "#/components/schemas/PositionDto"
+          }
+        },
+        "required": [
+          "changed",
+          "position"
+        ]
+      },
+      "PositionBody": {
+        "type": "object",
+        "properties": {
+          "stance": {
+            "type": "string",
+            "nullable": true
+          },
+          "weight": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          }
+        }
+      },
+      "CreateSnapshotBody": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "dateFrom": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "dateTo": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "session": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "assemblyVoteIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "excludeVotesWithoutPosition": {
+            "type": "boolean",
+            "nullable": true
+          }
+        }
+      },
+      "PublishBody": {
+        "type": "object",
+        "properties": {
+          "replace": {
+            "type": "boolean",
+            "nullable": true
+          }
+        }
+      },
+      "SnapshotCreatedResponse": {
+        "type": "object",
+        "properties": {
+          "snapshotId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "jobId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "selectedVotes": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "required": [
+          "snapshotId",
+          "jobId",
+          "selectedVotes"
+        ]
+      },
+      "VotesWithoutPosition": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "assemblyVoteIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "count",
+          "assemblyVoteIds"
+        ]
+      },
+      "SnapshotSummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "jobStatus": {
+            "type": "string"
+          },
+          "phase": {
+            "type": "string",
+            "nullable": true
+          },
+          "done": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "total": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "error": {
+            "type": "string",
+            "nullable": true
+          },
+          "quarter": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdBy": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "publishedBy": {
+            "type": "string",
+            "nullable": true
+          },
+          "publishedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "status",
+          "jobStatus",
+          "done",
+          "createdBy",
+          "createdAt"
+        ]
+      },
+      "SnapshotSelectionDto": {
+        "type": "object",
+        "properties": {
+          "dateFrom": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "dateTo": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "session": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "assemblyVoteIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "assemblyVoteIds"
+        ]
+      },
+      "SnapshotRulesDto": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "string"
+          },
+          "rules": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "version",
+          "rules"
+        ]
+      },
+      "ExcludedVote": {
+        "type": "object",
+        "properties": {
+          "assemblyVoteId": {
+            "type": "string"
+          },
+          "session": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "voteDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "title": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "assemblyVoteId",
+          "session",
+          "voteDate",
+          "title",
+          "reason"
+        ]
+      },
+      "OutcomeCounts": {
+        "type": "object",
+        "properties": {
+          "matched": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "notMatched": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "abstained": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "absent": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "notAMember": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "noBallot": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "required": [
+          "matched",
+          "notMatched",
+          "abstained",
+          "absent",
+          "notAMember",
+          "noBallot"
+        ]
+      },
+      "CountryRanking": {
+        "type": "object",
+        "properties": {
+          "countryCode": {
+            "type": "string"
+          },
+          "countryName": {
+            "type": "string"
+          },
+          "score": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "scoreText": {
+            "type": "string"
+          },
+          "rank": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "rankText": {
+            "type": "string"
+          },
+          "countedWeight": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "matchedWeight": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "votes": {
+            "$ref": "#/components/schemas/OutcomeCounts"
+          }
+        },
+        "required": [
+          "countryCode",
+          "countryName",
+          "scoreText",
+          "rankText",
+          "countedWeight",
+          "matchedWeight",
+          "votes"
+        ]
+      },
+      "SnapshotDetails": {
+        "type": "object",
+        "properties": {
+          "snapshot": {
+            "$ref": "#/components/schemas/SnapshotSummary"
+          },
+          "selection": {
+            "$ref": "#/components/schemas/SnapshotSelectionDto"
+          },
+          "excludeVotesWithoutPosition": {
+            "type": "boolean"
+          },
+          "rules": {
+            "$ref": "#/components/schemas/SnapshotRulesDto"
+          },
+          "includedVotes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "excludedVoteCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "excludedVotes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExcludedVote"
+            }
+          },
+          "replacedSnapshotId": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "rankedCountries": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "ranking": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CountryRanking"
+            }
+          }
+        },
+        "required": [
+          "snapshot",
+          "selection",
+          "excludeVotesWithoutPosition",
+          "rules",
+          "includedVotes",
+          "excludedVoteCount",
+          "excludedVotes",
+          "rankedCountries",
+          "ranking"
+        ]
+      },
+      "VoteContribution": {
+        "type": "object",
+        "properties": {
+          "ordinal": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "assemblyVoteId": {
+            "type": "string"
+          },
+          "session": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "voteDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "title": {
+            "type": "string"
+          },
+          "desiredOutcome": {
+            "type": "string"
+          },
+          "weight": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "ballot": {
+            "type": "string",
+            "nullable": true
+          },
+          "outcome": {
+            "type": "string"
+          },
+          "counted": {
+            "type": "boolean"
+          },
+          "matched": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ordinal",
+          "assemblyVoteId",
+          "session",
+          "voteDate",
+          "title",
+          "desiredOutcome",
+          "weight",
+          "outcome",
+          "counted",
+          "matched"
+        ]
+      },
+      "CountryBreakdown": {
+        "type": "object",
+        "properties": {
+          "country": {
+            "$ref": "#/components/schemas/CountryRanking"
+          },
+          "votes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VoteContribution"
+            }
+          },
+          "nextAfterOrdinal": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          }
+        },
+        "required": [
+          "country",
+          "votes",
+          "items"
+        ]
+      },
+      "SnapshotVoteDto": {
+        "type": "object",
+        "properties": {
+          "voteId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "ordinal": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "assemblyVoteId": {
+            "type": "string"
+          },
+          "session": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "voteDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "title": {
+            "type": "string"
+          },
+          "desiredOutcome": {
+            "type": "string",
+            "nullable": true
+          },
+          "weight": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "included": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "voteId",
+          "assemblyVoteId",
+          "session",
+          "voteDate",
+          "title",
+          "included"
+        ]
+      },
+      "SnapshotVotePage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SnapshotVoteDto"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "nextAfterVoteId": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ]
+      },
+      "ProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "nullable": true
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "detail": {
+            "type": "string",
+            "nullable": true
+          },
+          "instance": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": {}
+      },
+      "ValidationProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "nullable": true
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "detail": {
+            "type": "string",
+            "nullable": true
+          },
+          "instance": {
+            "type": "string",
+            "nullable": true
+          },
+          "errors": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "additionalProperties": {}
+      }
+    },
+    "securitySchemes": {
+      "X-User": {
+        "type": "apiKey",
+        "description": "Acting user: Dana or Omar (Analyst), Lena (Admin).",
+        "name": "X-User",
+        "in": "header"
+      }
+    }
+  },
+  "security": [
+    {
+      "X-User": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "Imports"
+    },
+    {
+      "name": "ImportReport"
+    },
+    {
+      "name": "Conflicts"
+    },
+    {
+      "name": "Votes"
+    },
+    {
+      "name": "Snapshots"
+    }
+  ]
+}

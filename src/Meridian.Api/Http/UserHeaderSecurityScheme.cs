@@ -13,6 +13,11 @@ public sealed class UserHeaderSecurityScheme : IOpenApiDocumentTransformer
 
     public Task TransformAsync(OpenApiDocument document, OpenApiDocumentTransformerContext context, CancellationToken cancellationToken)
     {
+        // ASP.NET Core fills "servers" with the address Kestrel listens on (inside Docker: http://[::]:8080), which a
+        // browser cannot reach, so Swagger UI's "Try it out" failed with "Failed to fetch". With no servers listed,
+        // Swagger UI and the generated client call the same address the page was opened from.
+        document.Servers.Clear();
+
         document.Components ??= new OpenApiComponents();
         document.Components.SecuritySchemes[SchemeId] = new OpenApiSecurityScheme
         {

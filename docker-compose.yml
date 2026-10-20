@@ -1,7 +1,30 @@
-# Local development stack.
-# Today: PostgreSQL only. The API and the Angular app are added as services later,
-# so that a single `docker compose up` starts the whole system.
+# Local stack: `docker compose up --build` starts PostgreSQL, the API and the web client.
+# `web` is the Angular client (nginx) on http://localhost:4200; it proxies /api to the API.
 services:
+  api:
+    build:
+      context: .
+      dockerfile: src/Meridian.Api/Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development   # Swagger and the OpenAPI document are served only in Development
+      ConnectionStrings__Default: Host=db;Port=5432;Database=${POSTGRES_DB:-meridian};Username=${POSTGRES_USER:-meridian};Password=${POSTGRES_PASSWORD:-meridian_dev}
+      Database__MigrateOnStartup: "true"
+      Seed__MemberStatesPath: /app/seed/member_states.csv
+      FileStore__LocalRoot: /data/uploads
+    volumes:
+      - meridian-uploads:/data/uploads
+    ports:
+      - "5284:8080"
+
+  web:
+    build: src/web
+    depends_on: [api]
+    ports:
+      - "4200:80"
+
   db:
     image: postgres:17
     container_name: meridian-db
@@ -22,3 +45,4 @@ services:
 
 volumes:
   meridian-db-data:
+  meridian-uploads:

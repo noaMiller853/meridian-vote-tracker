@@ -1,0 +1,28 @@
+<header class="topbar">
+  <div class="brand">Meridian Vote Tracker <span>Northwind Policy Institute</span></div>
+  <label class="switch">
+    <span>Switch user</span>
+    <select [value]="user" (change)="switchUser($any($event.target).value)" aria-label="Switch user">
+      @for (u of users; track u.name) {
+        <option [value]="u.name" [selected]="u.name === user">{{ u.name }} · {{ u.role }}</option>
+      }
+    </select>
+  </label>
+</header>
+
+<div class="shell">
+  <nav class="side">
+    <a routerLink="/imports" routerLinkActive="on">Imports</a>
+    <a routerLink="/review" routerLinkActive="on">
+      Review
+      @if (pending() > 0) {
+        <span class="badge">{{ pending() }}</span>
+      }
+    </a>
+    <a routerLink="/votes" routerLinkActive="on">Votes</a>
+    <a routerLink="/snapshots" routerLinkActive="on">Snapshots</a>
+  </nav>
+  <main class="content">
+    <router-outlet />
+  </main>
+</div>
