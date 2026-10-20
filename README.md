@@ -24,6 +24,12 @@ The API applies the migrations and loads the countries and users by itself on st
 
 Optional: copy `.env.example` to `.env` to change the database name, user, password or port.
 
+If `docker compose up` stops with "Ports are not available ... 5432", another PostgreSQL already uses that port on your machine. Set a free one, for example `POSTGRES_PORT=5433` in `.env` (or in the shell for one run); only the host side of the database port changes, the API is not affected.
+
+On a fresh database the API log shows one `fail: Microsoft.EntityFrameworkCore.Database.Command` for `__EFMigrationsHistory`: EF Core reads that table before it exists, then creates it and applies the migrations. It is not an error in the run.
+
+On Windows, clone into a short path (for example `C:\src`): some migration file paths are long, and Git fails with "Filename too long" under a deep folder unless `git config --global core.longpaths true` is set.
+
 ### Development without Docker for the API or the web client
 ```
 docker compose up -d db                # only the database
