@@ -20,7 +20,6 @@ public class MeridianDbContext(DbContextOptions<MeridianDbContext> options) : Db
     public DbSet<Snapshot> Snapshots => Set<Snapshot>();
     public DbSet<SnapshotVote> SnapshotVotes => Set<SnapshotVote>();
     public DbSet<SnapshotScore> SnapshotScores => Set<SnapshotScore>();
-    public DbSet<SnapshotContribution> SnapshotContributions => Set<SnapshotContribution>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

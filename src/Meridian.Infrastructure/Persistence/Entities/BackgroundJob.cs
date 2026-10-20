@@ -13,6 +13,8 @@ public class BackgroundJob
     public const string PhaseReading = "Reading";
     public const string PhaseClassifying = "Classifying";
     public const string PhaseWriting = "Writing";
+    public const string PhaseSelecting = "Selecting";
+    public const string PhaseCalculating = "Calculating";
 
     public long Id { get; set; }
 

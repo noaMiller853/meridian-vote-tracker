@@ -150,7 +150,7 @@ namespace Meridian.Infrastructure.Persistence.Migrations
 
                     b.ToTable("background_jobs", null, t =>
                         {
-                            t.HasCheckConstraint("ck_background_jobs_phase", "phase IS NULL OR phase IN ('Reading', 'Classifying', 'Writing')");
+                            t.HasCheckConstraint("ck_background_jobs_phase", "phase IS NULL OR phase IN ('Reading', 'Classifying', 'Writing', 'Selecting', 'Calculating')");
 
                             t.HasCheckConstraint("ck_background_jobs_status", "status IN ('Queued', 'Running', 'Succeeded', 'Failed')");
 
@@ -696,6 +696,10 @@ namespace Meridian.Infrastructure.Persistence.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("created_by_id");
 
+                    b.Property<bool>("ExcludeWithoutPosition")
+                        .HasColumnType("boolean")
+                        .HasColumnName("exclude_without_position");
+
                     b.Property<string>("Filter")
                         .IsRequired()
                         .HasColumnType("jsonb")
@@ -717,6 +721,10 @@ namespace Meridian.Infrastructure.Persistence.Migrations
                     b.Property<string>("Quarter")
                         .HasColumnType("text")
                         .HasColumnName("quarter");
+
+                    b.Property<long?>("ReplacedSnapshotId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("replaced_snapshot_id");
 
                     b.Property<string>("Rules")
                         .IsRequired()
@@ -745,6 +753,9 @@ namespace Meridian.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ux_snapshots_published_quarter")
                         .HasFilter("status = 'Published'");
 
+                    b.HasIndex("ReplacedSnapshotId")
+                        .HasDatabaseName("ix_snapshots_replaced_snapshot_id");
+
                     b.ToTable("snapshots", null, t =>
                         {
                             t.HasCheckConstraint("ck_snapshots_published", "status <> 'Published' OR (quarter IS NOT NULL AND published_by_id IS NOT NULL AND published_at IS NOT NULL)");
@@ -752,60 +763,6 @@ namespace Meridian.Infrastructure.Persistence.Migrations
                             t.HasCheckConstraint("ck_snapshots_quarter_format", "quarter IS NULL OR quarter ~ '^[0-9]{4}-Q[1-4]$'");
 
                             t.HasCheckConstraint("ck_snapshots_status", "status IN ('Calculating', 'Saved', 'Failed', 'Published')");
-                        });
-                });
-
-            modelBuilder.Entity("Meridian.Infrastructure.Persistence.Entities.SnapshotContribution", b =>
-                {
-                    b.Property<long>("SnapshotId")
-                        .HasColumnType("bigint")
-                        .HasColumnName("snapshot_id");
-
-                    b.Property<string>("CountryCode")
-                        .HasColumnType("text")
-                        .HasColumnName("country_code");
-
-                    b.Property<long>("VoteId")
-                        .HasColumnType("bigint")
-                        .HasColumnName("vote_id");
-
-                    b.Property<string>("Ballot")
-                        .HasColumnType("text")
-                        .HasColumnName("ballot");
-
-                    b.Property<bool>("Counted")
-                        .HasColumnType("boolean")
-                        .HasColumnName("counted");
-
-                    b.Property<bool>("Matched")
-                        .HasColumnType("boolean")
-                        .HasColumnName("matched");
-
-                    b.Property<string>("Reason")
-                        .HasColumnType("text")
-                        .HasColumnName("reason");
-
-                    b.Property<short>("Weight")
-                        .HasColumnType("smallint")
-                        .HasColumnName("weight");
-
-                    b.HasKey("SnapshotId", "CountryCode", "VoteId")
-                        .HasName("pk_snapshot_contributions");
-
-                    b.HasIndex("CountryCode")
-                        .HasDatabaseName("ix_snapshot_contributions_country_code");
-
-                    b.HasIndex("VoteId")
-                        .HasDatabaseName("ix_snapshot_contributions_vote_id");
-
-                    b.HasIndex("SnapshotId", "VoteId")
-                        .HasDatabaseName("ix_snapshot_contributions_snapshot_id_vote_id");
-
-                    b.ToTable("snapshot_contributions", null, t =>
-                        {
-                            t.HasCheckConstraint("ck_snapshot_contributions_ballot", "ballot IS NULL OR ballot IN ('Y', 'N', 'A', 'X')");
-
-                            t.HasCheckConstraint("ck_snapshot_contributions_weight", "weight BETWEEN 1 AND 5");
                         });
                 });
 
@@ -819,13 +776,52 @@ namespace Meridian.Infrastructure.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("country_code");
 
+                    b.Property<int>("AbsentVotes")
+                        .HasColumnType("integer")
+                        .HasColumnName("absent_votes");
+
+                    b.Property<int>("AbstainedVotes")
+                        .HasColumnType("integer")
+                        .HasColumnName("abstained_votes");
+
+                    b.Property<string>("Ballots")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("ballots");
+
                     b.Property<int>("CountedWeight")
                         .HasColumnType("integer")
                         .HasColumnName("counted_weight");
 
+                    b.Property<string>("CountryName")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("country_name");
+
+                    b.Property<int>("MatchedVotes")
+                        .HasColumnType("integer")
+                        .HasColumnName("matched_votes");
+
                     b.Property<int>("MatchedWeight")
                         .HasColumnType("integer")
                         .HasColumnName("matched_weight");
+
+                    b.Property<int>("NoBallotVotes")
+                        .HasColumnType("integer")
+                        .HasColumnName("no_ballot_votes");
+
+                    b.Property<int>("NotAMemberVotes")
+                        .HasColumnType("integer")
+                        .HasColumnName("not_a_member_votes");
+
+                    b.Property<int>("NotMatchedVotes")
+                        .HasColumnType("integer")
+                        .HasColumnName("not_matched_votes");
+
+                    b.Property<string>("Outcomes")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("outcomes");
 
                     b.Property<int?>("Rank")
                         .HasColumnType("integer")
@@ -845,6 +841,10 @@ namespace Meridian.Infrastructure.Persistence.Migrations
                     b.ToTable("snapshot_scores", null, t =>
                         {
                             t.HasCheckConstraint("ck_snapshot_scores_rank", "(score IS NULL) = (rank IS NULL)");
+
+                            t.HasCheckConstraint("ck_snapshot_scores_score", "score IS NULL OR score BETWEEN 0 AND 100");
+
+                            t.HasCheckConstraint("ck_snapshot_scores_strings", "length(ballots) = length(outcomes)");
                         });
                 });
 
@@ -871,9 +871,26 @@ namespace Meridian.Infrastructure.Persistence.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("included");
 
+                    b.Property<int?>("Ordinal")
+                        .HasColumnType("integer")
+                        .HasColumnName("ordinal");
+
                     b.Property<string>("Reason")
                         .HasColumnType("text")
                         .HasColumnName("reason");
+
+                    b.Property<int>("Session")
+                        .HasColumnType("integer")
+                        .HasColumnName("session");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("title");
+
+                    b.Property<DateOnly>("VoteDate")
+                        .HasColumnType("date")
+                        .HasColumnName("vote_date");
 
                     b.Property<short?>("Weight")
                         .HasColumnType("smallint")
@@ -885,11 +902,17 @@ namespace Meridian.Infrastructure.Persistence.Migrations
                     b.HasIndex("VoteId")
                         .HasDatabaseName("ix_snapshot_votes_vote_id");
 
+                    b.HasIndex("SnapshotId", "Ordinal")
+                        .IsUnique()
+                        .HasDatabaseName("ux_snapshot_votes_ordinal");
+
                     b.ToTable("snapshot_votes", null, t =>
                         {
                             t.HasCheckConstraint("ck_snapshot_votes_desired_outcome", "desired_outcome IS NULL OR desired_outcome IN ('Y', 'N')");
 
                             t.HasCheckConstraint("ck_snapshot_votes_included", "NOT included OR (desired_outcome IS NOT NULL AND weight IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_snapshot_votes_ordinal", "(included AND ordinal >= 0 AND reason IS NULL) OR (NOT included AND ordinal IS NULL AND reason IS NOT NULL)");
 
                             t.HasCheckConstraint("ck_snapshot_votes_weight", "weight IS NULL OR weight BETWEEN 1 AND 5");
                         });
@@ -1249,48 +1272,19 @@ namespace Meridian.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_snapshots_users_published_by_id");
 
+                    b.HasOne("Meridian.Infrastructure.Persistence.Entities.Snapshot", "ReplacedSnapshot")
+                        .WithMany()
+                        .HasForeignKey("ReplacedSnapshotId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_snapshots_snapshots_replaced_snapshot_id");
+
                     b.Navigation("BackgroundJob");
 
                     b.Navigation("CreatedBy");
 
                     b.Navigation("PublishedBy");
-                });
 
-            modelBuilder.Entity("Meridian.Infrastructure.Persistence.Entities.SnapshotContribution", b =>
-                {
-                    b.HasOne("Meridian.Infrastructure.Persistence.Entities.Country", "Country")
-                        .WithMany()
-                        .HasForeignKey("CountryCode")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_snapshot_contributions_countries_country_code");
-
-                    b.HasOne("Meridian.Infrastructure.Persistence.Entities.Snapshot", "Snapshot")
-                        .WithMany("Contributions")
-                        .HasForeignKey("SnapshotId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_snapshot_contributions_snapshots_snapshot_id");
-
-                    b.HasOne("Meridian.Infrastructure.Persistence.Entities.Vote", "Vote")
-                        .WithMany()
-                        .HasForeignKey("VoteId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_snapshot_contributions_votes_vote_id");
-
-                    b.HasOne("Meridian.Infrastructure.Persistence.Entities.SnapshotVote", null)
-                        .WithMany()
-                        .HasForeignKey("SnapshotId", "VoteId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_snapshot_contributions_snapshot_votes_snapshot_id_vote_id");
-
-                    b.Navigation("Country");
-
-                    b.Navigation("Snapshot");
-
-                    b.Navigation("Vote");
+                    b.Navigation("ReplacedSnapshot");
                 });
 
             modelBuilder.Entity("Meridian.Infrastructure.Persistence.Entities.SnapshotScore", b =>
@@ -1402,8 +1396,6 @@ namespace Meridian.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Meridian.Infrastructure.Persistence.Entities.Snapshot", b =>
                 {
-                    b.Navigation("Contributions");
-
                     b.Navigation("Scores");
 
                     b.Navigation("Votes");

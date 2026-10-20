@@ -12,7 +12,8 @@ public class BackgroundJobConfiguration : IEntityTypeConfiguration<BackgroundJob
         {
             t.HasCheckConstraint("ck_background_jobs_type", "type IN ('Import', 'Snapshot')");
             t.HasCheckConstraint("ck_background_jobs_status", "status IN ('Queued', 'Running', 'Succeeded', 'Failed')");
-            t.HasCheckConstraint("ck_background_jobs_phase", "phase IS NULL OR phase IN ('Reading', 'Classifying', 'Writing')");
+            t.HasCheckConstraint("ck_background_jobs_phase",
+                "phase IS NULL OR phase IN ('Reading', 'Classifying', 'Writing', 'Selecting', 'Calculating')");
         });
         b.Property(x => x.CreatedAt).HasDefaultValueSql("now()");
     }
