@@ -40,7 +40,15 @@ npm start                              # http://localhost:4200, /api is proxied 
 ```
 
 ### Run against Azure Database for PostgreSQL (not verified)
-This path was tried and could not be completed: the Azure server's firewall had no rule for my IP and my account could not add one (DECISIONS.md, section 4). The steps below are what the code supports; the local run above is the one that was tested.
+This path was tried and could not be completed: the Azure server has public access enabled but no firewall rule for my IP, and my Reader role cannot add one (DECISIONS.md, section 4). The steps below are what the code supports; the local run above is the one that was tested.
+
+Check the connection first, without the application (the portal's Connect page, Pre-requisites check, shows whether your IP is allowed):
+
+```
+docker run --rm -e PGPASSWORD=$env:PGPASSWORD postgres:17 psql "host=<server name>.postgres.database.azure.com port=5432 dbname=postgres user=<name@tenant.onmicrosoft.com> sslmode=require" -c "select current_user;"
+```
+
+`server closed the connection unexpectedly` means the server's firewall has no rule for your IP (portal > the server > Networking). If the Azure CLI is not installed, the token can be taken from Azure Cloud Shell in the portal with the same `az account get-access-token` command.
 Nothing secret is stored in the repository. Everyone who runs this puts their own values in `.env` (git-ignored; copy `.env.example`):
 
 ```

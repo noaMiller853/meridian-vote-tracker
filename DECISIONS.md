@@ -31,7 +31,7 @@ Score = 100 × (sum of matching weights) ÷ (sum of counted weights), stored wit
 - One published snapshot per quarter is enforced by a partial unique index; replacing needs an explicit `replace`.
 
 ## 4. Azure usage
-- **Tried, blocked:** Azure Database for PostgreSQL (`dotnetcandidate2-psql`), with the connection string set from `.env` through `docker-compose.azure.yml` (Entra token as the password). The connection timed out: the server firewall has no rule for my IP, and my account has no permission to edit it. No Azure run was completed, so that path is not verified.
+- **Tried, blocked by access:** Azure Database for PostgreSQL (`dotnetcandidate2-psql`, Microsoft Entra authentication). The code reaches it through configuration only: `docker-compose.azure.yml`, the connection string from `.env` or the terminal, an Entra token as the password. The server allows public access but has no firewall rule for my IP: the portal's Connect > Pre-requisites check fails on "Add Client IP", and plain `psql` (outside the app) gets "server closed the connection unexpectedly". My role is Reader, so I could not add the rule; I asked for it. Until then the Azure path is not verified.
 - **Used:** no Azure resource. Development, tests and `docker compose up` run on PostgreSQL 17 in Docker; uploads are in a Docker volume. All connection settings come from configuration; no secrets in Git.
 - **Not implemented:** Blob Storage (only the local `IFileStore` exists) and Application Insights (logs go to the console, with the correlation id in the log scope). Key Vault is not used.
 - **Not used, on purpose:** Cosmos DB (relational integrity and joins over a million rows). OpenAI, Foundry and Document Intelligence are only for the PDF bonus, which was not built.
