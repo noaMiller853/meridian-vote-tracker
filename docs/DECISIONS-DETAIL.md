@@ -97,13 +97,12 @@ This draft is longer than the 2-page limit on purpose. It is trimmed at the end 
 - Full table list, relationships and constraints: `docs/DATABASE.md`.
 
 ## 10. Azure usage
-- **Decided. Database:** local PostgreSQL in Docker is the default for development, tests and `docker compose up`. At the end, the whole system is run once against Azure Database for PostgreSQL by changing only the connection string, and that run is documented in the README. The Azure resources exist only during the assignment window, so a reviewer must still be able to run everything locally.
-- **Decided (local part built in step 4a). Blob Storage:** original uploaded files (HIS-01) go through `IFileStore`. The default is a local folder (`FileStore:LocalRoot`), content-addressed by sha256 so the same file is stored once; Blob Storage is added as a second implementation selected by configuration.
-- **Proposed. Application Insights:** logs and the correlation id from the UI through the API.
-- **Proposed. Key Vault:** only if time allows. Secrets stay in `.env` / user-secrets, never in Git.
+- **Database:** local PostgreSQL in Docker is the default for development, tests and `docker compose up`, and the only one that was actually run. The plan was to run the whole system once against Azure Database for PostgreSQL by changing only the connection string (`docker-compose.azure.yml` sets it from `.env`; README "Run against Azure Database for PostgreSQL"). **Tried, blocked:** the server `dotnetcandidate2-psql` uses Microsoft Entra authentication (a token as the password); the connection timed out because the server firewall has no rule for my IP and my account has no permission to add one. No Azure run was completed, so this path is not verified.
+- **Blob Storage: not implemented.** Original uploaded files (HIS-01) go through `IFileStore`; the only implementation is a local folder (`FileStore:LocalRoot`, a Docker volume in compose), content-addressed by sha256 so the same file is stored once. Blob Storage would be a second implementation selected by configuration. `AZURE_STORAGE_CONNECTION_STRING` in `.env.example` is a placeholder that nothing reads.
+- **Application Insights: not implemented.** Logs go to the console; the correlation id from the UI is in the log scope of every request and background job (`Console:IncludeScopes`) and is stored on jobs and audit events. `APPLICATIONINSIGHTS_CONNECTION_STRING` in `.env.example` is a placeholder that nothing reads.
+- **Key Vault: not used.** Secrets stay in `.env` / user-secrets, never in Git.
 - **Decided. Cosmos DB: not used.** The core need is relational integrity (constraints, transactions, joins over a million rows). A document store adds nothing here.
-- **Azure OpenAI, Foundry, Document Intelligence:** only if the PDF bonus is built.
-- The app connects to Azure only through configuration, after the core works locally.
+- **Azure OpenAI, Foundry, Document Intelligence:** only for the PDF bonus, which was not built.
 
 ## 11. API and frontend (Proposed)
 - Roles are enforced in the API (positions and publishing are Admin only), not just in the UI. One error format (ProblemDetails), documented in OpenAPI.

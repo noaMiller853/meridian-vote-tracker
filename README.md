@@ -33,6 +33,36 @@ npm install
 npm start                              # http://localhost:4200, /api is proxied to the API
 ```
 
+### Run against Azure Database for PostgreSQL (not verified)
+This path was tried and could not be completed: the Azure server's firewall had no rule for my IP and my account could not add one (DECISIONS.md, section 4). The steps below are what the code supports; the local run above is the one that was tested.
+Nothing secret is stored in the repository. Everyone who runs this puts their own values in `.env` (git-ignored; copy `.env.example`):
+
+```
+AZURE_PG_HOST=<server name>.postgres.database.azure.com
+AZURE_PG_DB=postgres
+AZURE_PG_USER=<server admin login>
+AZURE_PG_PASSWORD=<password>
+```
+
+Then:
+
+```
+docker compose -f docker-compose.yml -f docker-compose.azure.yml up --build
+```
+
+If the server uses Microsoft Entra authentication (the Connect page of the server shows `PGPASSWORD=$(az account get-access-token ...)`), the user is your Entra account and the password is a token that expires after about an hour. Do not store it in `.env`; set it in the terminal instead (Azure CLI: `az login` once):
+
+```
+$env:AZURE_PG_HOST = '<server name>.postgres.database.azure.com'
+$env:AZURE_PG_USER = '<name@tenant.onmicrosoft.com>'
+$env:AZURE_PG_PASSWORD = az account get-access-token --resource https://ossrdbms-aad.database.windows.net --query accessToken --output tsv
+docker compose -f docker-compose.yml -f docker-compose.azure.yml up --build
+```
+
+The API applies the migrations and loads the countries and users in that database on start. The Azure server must allow your IP in its firewall (portal > the server > Networking). Without the Azure variables, `docker compose up --build` uses the local database as before.
+
+Without Docker for the API, set the same connection as environment variables in the terminal: `$env:ConnectionStrings__Default = 'Host=...;Port=5432;Database=postgres;Username=...;Password=...;Ssl Mode=Require'`.
+
 ## Web client (`src/web`)
 Angular 22 with the four screens of the assignment: Imports, Review, Votes, Snapshots. The user switcher at the top sends the `X-User` header.
 
@@ -43,6 +73,12 @@ cd src/web
 npm run api      # downloads http://localhost:5284/openapi/v1.json, regenerates src/app/api/schema.d.ts
 npm run build    # fails where a screen no longer matches the contract
 npm test         # unit tests
+```
+
+`npm run build` and `npm test` need Node.js 22.22.3+ (Angular 22). With an older Node, run them in the image the web Dockerfile uses (PowerShell, from `src/web`):
+
+```
+docker run --rm -v "${PWD}:/app" -v meridian-web-node-modules:/app/node_modules -w /app node:24-alpine sh -c "npm ci && npx ng build && npx ng test --watch=false"
 ```
 
 More in `src/web/README.md`.

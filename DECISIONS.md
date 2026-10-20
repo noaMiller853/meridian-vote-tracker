@@ -31,10 +31,10 @@ Score = 100 × (sum of matching weights) ÷ (sum of counted weights), stored wit
 - One published snapshot per quarter is enforced by a partial unique index; replacing needs an explicit `replace`.
 
 ## 4. Azure usage
-- **Used now:** nothing connected yet. Development, tests and `docker compose up` run on PostgreSQL 17 in Docker, with the uploaded files in a volume. The application reads all connection settings from configuration, with no secrets in Git.
-- **Planned for the Azure run:** Azure Database for PostgreSQL, by changing only the connection string; Application Insights for logs and the correlation id.
-- **Not implemented:** Blob Storage. Files go through `IFileStore`; only the local implementation exists, and Blob would be a second one selected by configuration. Key Vault: next phase.
-- **Not used, on purpose:** Cosmos DB (the need is relational integrity and joins over a million rows). OpenAI, Foundry and Document Intelligence are only needed for the PDF bonus.
+- **Tried, blocked:** Azure Database for PostgreSQL (`dotnetcandidate2-psql`), with the connection string set from `.env` through `docker-compose.azure.yml` (Entra token as the password). The connection timed out: the server firewall has no rule for my IP, and my account has no permission to edit it. No Azure run was completed, so that path is not verified.
+- **Used:** no Azure resource. Development, tests and `docker compose up` run on PostgreSQL 17 in Docker; uploads are in a Docker volume. All connection settings come from configuration; no secrets in Git.
+- **Not implemented:** Blob Storage (only the local `IFileStore` exists) and Application Insights (logs go to the console, with the correlation id in the log scope). Key Vault is not used.
+- **Not used, on purpose:** Cosmos DB (relational integrity and joins over a million rows). OpenAI, Foundry and Document Intelligence are only for the PDF bonus, which was not built.
 
 ## 5. What I would change before production
 - Real authentication (for example Entra ID) with roles as claims; the `X-User` header has no password.
