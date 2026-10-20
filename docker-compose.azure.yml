@@ -1,0 +1,8 @@
+# Run the whole system against Azure Database for PostgreSQL instead of the local container:
+#   docker compose -f docker-compose.yml -f docker-compose.azure.yml up --build
+# The values come from .env (git-ignored), see .env.example. No secret is stored in this file.
+# The local `db` container still starts (the API service depends on it) but is not used.
+services:
+  api:
+    environment:
+      ConnectionStrings__Default: Host=${AZURE_PG_HOST:?Set AZURE_PG_HOST in .env};Port=5432;Database=${AZURE_PG_DB:-postgres};Username=${AZURE_PG_USER:?Set AZURE_PG_USER in .env};Password=${AZURE_PG_PASSWORD:?Set AZURE_PG_PASSWORD in .env};Ssl Mode=Require
