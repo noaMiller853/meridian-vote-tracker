@@ -32,8 +32,9 @@ Score = 100 × (sum of matching weights) ÷ (sum of counted weights), stored wit
 
 ## 4. Azure usage
 - **Azure Database for PostgreSQL: tried, not verified.** The code reaches it through configuration only (`docker-compose.azure.yml`, connection string from `.env`, Entra token as the password). The server has no firewall rule for my IP, and my Reader role cannot add one; I asked for it.
-- **Used:** no Azure resource. Everything runs on PostgreSQL 17 in Docker, uploads in a volume, settings from configuration, no secrets in Git.
-- **Not implemented:** Blob Storage (only the local `IFileStore`), Application Insights (console logs with the correlation id), Key Vault.
+- **Application Insights (`dotnetcandidate2-appi`):** connected through configuration only (OpenTelemetry, on when the connection string is set), correlation id on requests and logs; not yet seen in the portal.
+- **Otherwise local:** PostgreSQL 17 in Docker, uploads in a volume, settings from configuration, no secrets in Git.
+- **Not implemented:** Blob Storage (only the local `IFileStore`), Key Vault.
 - **Not used, on purpose:** Cosmos DB (relational integrity, joins over a million rows). OpenAI, Foundry and Document Intelligence only serve the PDF bonus, not built.
 
 ## 5. What I would change before production

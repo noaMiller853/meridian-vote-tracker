@@ -109,12 +109,8 @@ public sealed class SnapshotWorker(
 
     private async Task RunAsync(SnapshotJob job, long systemUserId, CancellationToken ct)
     {
-        using var logScope = logger.BeginScope(new Dictionary<string, object?>
-        {
-            ["CorrelationId"] = job.CorrelationId,
-            ["SnapshotId"] = job.SnapshotId,
-            ["JobId"] = job.JobId,
-        });
+        using var logScope = logger.BeginScope("CorrelationId:{CorrelationId} SnapshotId:{SnapshotId} JobId:{JobId}",
+            job.CorrelationId, job.SnapshotId, job.JobId);
         logger.LogInformation("Snapshot {SnapshotId} started.", job.SnapshotId);
 
         var progress = new JobProgress(dataSource, job.JobId, TimeSpan.FromMilliseconds(Options.ProgressIntervalMs));

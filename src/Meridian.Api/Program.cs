@@ -11,6 +11,7 @@ builder.Services.AddControllers()
 builder.Services.AddOpenApi(options => options.AddDocumentTransformer<UserHeaderSecurityScheme>());
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddScoped<CurrentUser>();
+builder.AddApplicationInsightsWhenConfigured();
 
 var app = builder.Build();
 

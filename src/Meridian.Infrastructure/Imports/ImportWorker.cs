@@ -120,12 +120,8 @@ public sealed class ImportWorker(
     private async Task RunAsync(ImportJob job, long systemUserId, CancellationToken ct)
     {
         using var scope = scopes.CreateScope();
-        using var logScope = logger.BeginScope(new Dictionary<string, object?>
-        {
-            ["CorrelationId"] = job.CorrelationId,
-            ["ImportId"] = job.ImportId,
-            ["JobId"] = job.JobId,
-        });
+        using var logScope = logger.BeginScope("CorrelationId:{CorrelationId} ImportId:{ImportId} JobId:{JobId}",
+            job.CorrelationId, job.ImportId, job.JobId);
         logger.LogInformation("Import {ImportId} started: {FileName}.", job.ImportId, job.FileName);
 
         var processor = scope.ServiceProvider.GetRequiredService<IImportProcessor>();

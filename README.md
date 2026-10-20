@@ -180,9 +180,17 @@ Uploaded files are kept in `FileStore:LocalRoot` (Development: `data/uploads` at
 - Users: Dana (Analyst), Omar (Analyst), Lena (Admin), added on startup. Switch user from the menu at the top of the screen.
 
 ## Configuration and secrets
-No secrets in the repository. Local values live in `.env` or `dotnet user-secrets`; in Docker and Azure the settings are environment variables (`ConnectionStrings__Default`, `Database__MigrateOnStartup`, `Seed__MemberStatesPath`, `FileStore__LocalRoot`).
+No secrets in the repository. Local values live in `.env` or `dotnet user-secrets`; in Docker and Azure the settings are environment variables (`ConnectionStrings__Default`, `Database__MigrateOnStartup`, `Seed__MemberStatesPath`, `FileStore__LocalRoot`, `APPLICATIONINSIGHTS_CONNECTION_STRING`).
 
-Azure: the system runs fully locally and does not use any Azure resource yet. The connection string is the only setting needed to point the API at Azure Database for PostgreSQL. `AZURE_STORAGE_CONNECTION_STRING` and `APPLICATIONINSIGHTS_CONNECTION_STRING` in `.env.example` are placeholders; nothing reads them yet (see DECISIONS.md, section 4).
+**Application Insights** (optional). Put the resource's connection string (portal > the Application Insights resource > Overview > Connection String) in `.env` as `APPLICATIONINSIGHTS_CONNECTION_STRING=...`; `docker compose up` passes it to the API. When it is set, the API sends its requests and logs to Application Insights (Azure Monitor OpenTelemetry, all requests kept). When it is missing or empty, nothing is registered and the API logs to the console only. Each request and the background job it starts carry the correlation id (`X-Correlation-Id`) as the property `CorrelationId`, so one query finds the whole story:
+
+```
+union requests, traces
+| where customDimensions.CorrelationId == "<id from the X-Correlation-Id response header>"
+| order by timestamp asc
+```
+
+Other Azure settings: the connection string is the only setting needed to point the API at Azure Database for PostgreSQL (not verified, see DECISIONS.md section 4). `AZURE_STORAGE_CONNECTION_STRING` in `.env.example` is a placeholder; nothing reads it.
 
 ## Documents
 - `DECISIONS.md`: decisions, trade-offs, scoring rules (2 pages)

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text.RegularExpressions;
 
 namespace Meridian.Api.Http;
@@ -18,7 +19,11 @@ public sealed partial class CorrelationIdMiddleware(RequestDelegate next, ILogge
 
         context.Items[Header] = id;
         context.Response.Headers[Header] = id;
-        using (logger.BeginScope(new Dictionary<string, object> { ["CorrelationId"] = id }))
+        // On the request telemetry too (Application Insights, when configured); does nothing when no one listens.
+        Activity.Current?.SetTag(Telemetry.CorrelationIdName, id);
+        // A message-template scope: the console prints "CorrelationId:<id>" and OpenTelemetry gets a CorrelationId property
+        // (a dictionary scope shows only its type name in the console).
+        using (logger.BeginScope("CorrelationId:{CorrelationId}", id))
             await next(context);
     }
 

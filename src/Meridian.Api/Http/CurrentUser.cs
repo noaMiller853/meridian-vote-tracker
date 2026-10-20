@@ -63,7 +63,7 @@ public sealed class CurrentUserMiddleware(RequestDelegate next, ILogger<CurrentU
         }
 
         current.Set(user.Id, user.Name, user.Role);
-        using (logger.BeginScope(new Dictionary<string, object> { ["User"] = user.Name }))
+        using (logger.BeginScope("User:{User}", user.Name))
             await next(context);
     }
 

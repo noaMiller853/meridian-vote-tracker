@@ -14,6 +14,8 @@ services:
       Database__MigrateOnStartup: "true"
       Seed__MemberStatesPath: /app/seed/member_states.csv
       FileStore__LocalRoot: /data/uploads
+      # Application Insights: on only when .env (git-ignored) sets it; empty means off. Never put the value in this file.
+      APPLICATIONINSIGHTS_CONNECTION_STRING: ${APPLICATIONINSIGHTS_CONNECTION_STRING:-}
     volumes:
       - meridian-uploads:/data/uploads
     ports:
