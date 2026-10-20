@@ -42,7 +42,7 @@ Score = 100 × (sum of matching weights) ÷ (sum of counted weights), stored wit
 - HTTPS; an exact CORS origin if the front end moves; no user names in the 401.
 - Large CHECK constraints added `NOT VALID`, then validated.
 - One timestamp clock, the database's (two today).
-- Blob Storage, Key Vault, central logs and alerts, backups.
+- Key Vault for secrets, a managed identity instead of short-lived tokens, Application Insights alerts and dashboards, backups.
 - Batched or queued imports if one transaction becomes a problem.
 
 ## 6. Next phase: four developers and standards
