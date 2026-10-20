@@ -3,16 +3,16 @@
 Detail behind every rule: [docs/DECISIONS-DETAIL.md](docs/DECISIONS-DETAIL.md). Tables and constraints: [docs/DATABASE.md](docs/DATABASE.md).
 
 ## 1. Key decisions and trade-offs
-- **The back end owns the rules.** ASP.NET Core 9, EF Core + Npgsql, bulk `COPY` for large files (plain EF is too slow for about a million rows). Validation and classification are pure Domain code with unit tests.
-- **Deterministic ingestion, no AI.** Every row gets one class (New, Unchanged, Duplicate, Invalid, Contradiction, Conflict). Approved data is never overwritten by a process, only by a person's decision.
-- **Strict format.** Dates `yyyy-mm-dd`, ballots exactly `Y/N/A/X`. The only normalizations (trim and upper-case code and ballot, one space in titles) are counted and reported (ING-13). Nothing is guessed (`YES` is Invalid).
-- **A bad row never spoils the vote.** Vote details come from valid rows only. When they disagree, all valid rows of that vote are rejected as Contradiction: taking the majority would be choosing a value.
-- **Idempotent re-uploads** (ING-12): same file, same result; no new conflict while one waits, and none for a conflict already rejected, or a value already replaced by a decision, from the same file (sha256).
-- **Concurrency in the database.** A decision is one conditional `UPDATE ... WHERE status='Pending'`; the loser gets 409 with who decided (CON-05). Stale conflicts need `expectedApprovedValue`; positions need `expectedVersion`.
-- **One transaction per import**: never a half-imported file. Cost: a late failure means uploading again. Historic file (962,171 lines): about 70-90 s, peak memory about 350 MB.
-- **Progress is a table plus polling**, not SignalR: it survives a page refresh.
-- **Front end:** Angular with a client generated from the OpenAPI document, one origin (no CORS); validation errors beside the field, 409 as a structured message. Appendix B screens are not binding.
-- **Users:** `X-User` with preset users (section 3); roles enforced in the API (only Admin sets positions and publishes). `X-Correlation-Id` follows a request into logs, jobs and audit.
+- **The back end owns the rules:** ASP.NET Core 9, EF Core + Npgsql, bulk `COPY` for large files (plain EF is too slow for a million rows); validation and classification are unit-tested Domain code.
+- **Deterministic ingestion, no AI:** one class per row (New, Unchanged, Duplicate, Invalid, Contradiction, Conflict); only a person's decision overwrites approved data.
+- **Strict format:** dates `yyyy-mm-dd`, ballots exactly `Y/N/A/X`; the only normalizations (trim and upper-case code and ballot, one space in titles) are counted and reported (ING-13); nothing guessed (`YES` is Invalid).
+- **A bad row never spoils the vote:** details come from valid rows only; if they disagree, all valid rows are Contradiction (a majority would be choosing a value).
+- **Idempotent re-uploads** (ING-12): same file, same result; no second conflict while one waits, none for a proposal rejected or a value replaced by a decision from the same file (sha256).
+- **Concurrency in the database:** a decision is one conditional `UPDATE ... WHERE status='Pending'`; the loser gets 409 naming the decider (CON-05). Stale conflicts need `expectedApprovedValue`, positions `expectedVersion`.
+- **One transaction per import:** never half-imported; a late failure means uploading again. Historic file (962,171 lines): about 70-90 s, peak memory about 350 MB.
+- **Progress:** a table plus polling, not SignalR; survives a refresh.
+- **Front end:** Angular, client generated from the OpenAPI document, one origin (no CORS); errors beside the field, 409 as a structured message; Appendix B not binding.
+- **Users:** preset users via `X-User` (section 3), roles enforced in the API (only Admin sets positions and publishes); `X-Correlation-Id` follows a request into logs, jobs and audit.
 
 ## 2. Scoring rules (SNP)
 Score = 100 × (sum of matching weights) ÷ (sum of counted weights), stored with 6 decimals, shown with one.
@@ -31,20 +31,19 @@ Score = 100 × (sum of matching weights) ÷ (sum of counted weights), stored wit
 - One published snapshot per quarter (partial unique index); replacing needs an explicit `replace`.
 
 ## 4. Azure usage
-- **Azure Database for PostgreSQL: tried, not verified.** The code reaches it through configuration only (`docker-compose.azure.yml`, connection string from `.env`, Entra token as the password). The server has no firewall rule for my IP, and my Reader role cannot add one; I asked for it.
-- **Application Insights (`dotnetcandidate2-appi`):** connected through configuration only (OpenTelemetry, on when the connection string is set), correlation id on requests and logs; verified in the portal (requests and logs, including the import worker, found by one correlation id).
-- **Otherwise local:** PostgreSQL 17 in Docker, uploads in a volume by default, no secrets in Git.
-- **Blob Storage (`dotnetcandidate2st`):** through configuration only, Entra auth; verified against Azure (an upload stored as a blob, import Succeeded).
-- **Not implemented:** Key Vault.
-- **Not used, on purpose:** Cosmos DB (relational integrity, joins over a million rows). OpenAI, Foundry and Document Intelligence only serve the PDF bonus, not built.
+- **Application Insights (`dotnetcandidate2-appi`): used, verified.** Connected through configuration only (OpenTelemetry, on when the connection string is set), correlation id on requests and logs; verified in the portal (requests and logs, including the import worker, found by one correlation id).
+- **Blob Storage (`dotnetcandidate2st`): used, verified against Azure** (an upload stored as a blob, import Succeeded). On by configuration (`docker-compose.blob.yml`); local files stay the default, so one command runs everything. Key access is disabled: Entra auth only. If Azure refuses: a clear 503, nothing imported, no silent fallback to local files (they would split between two stores unnoticed).
+- **Azure Database for PostgreSQL (`dotnetcandidate2-psql`): supported, blocked, not verified.** Configuration only (`docker-compose.azure.yml`, Entra token as password). Public access is on, but no firewall rule exists for my IP (diagnosis in DECISIONS-DETAIL §10). The firewall is a management setting and my role is Reader (blob access is a separate data role); I asked for the rule. Meanwhile: PostgreSQL 17 in Docker.
+- **Key Vault (`dotnetcandidate2kv`): planned, not connected within the time window.** Intended source of connection strings and tokens via the configuration provider (`--` for `:`), `DefaultAzureCredential`, a managed identity when deployed. Until then secrets come only from `.env` and the terminal, never Git.
+- **Not used, on purpose:** Cosmos DB (relational integrity, joins over a million rows). Document Intelligence, Azure OpenAI and Foundry only serve the PDF bonus: designed ([docs/BONUS-PDF-DESIGN.md](docs/BONUS-PDF-DESIGN.md)), not built.
 
 ## 5. What I would change before production
-- Real authentication (Entra ID, roles as claims); `X-User` has no password.
+- Real authentication (Entra ID, roles as claims) instead of the password-less `X-User`.
 - HTTPS; an exact CORS origin if the front end moves; no user names in the 401.
 - Large CHECK constraints added `NOT VALID`, then validated.
-- All timestamps from the database clock (two clocks today).
+- One timestamp clock, the database's (two today).
 - Blob Storage, Key Vault, central logs and alerts, backups.
-- Imports in batches or on a queue if one transaction becomes a problem.
+- Batched or queued imports if one transaction becomes a problem.
 
 ## 6. Next phase: four developers and standards
 1. Ingestion and data quality (formats, consistency warnings, performance).
@@ -55,4 +54,4 @@ Score = 100 × (sum of matching weights) ÷ (sum of counted weights), stored wit
 Standards first: the OpenAPI document is the contract and the client is regenerated in CI; one error format (ProblemDetails); reviewed migrations only; every rule tested, with real PostgreSQL integration tests; decisions recorded here; AI-assisted code reviewed like any other.
 
 ## 7. Bonus
-Designed, not built: the core came first. Design: [docs/BONUS-PDF-DESIGN.md](docs/BONUS-PDF-DESIGN.md). Document Intelligence (layout) gives the table, the marks and a confidence per cell; an LLM (Azure OpenAI structured outputs by default) is called only for what DI cannot resolve, because every row prints the country code. The output is untrusted: Domain rules (known code, membership, one mark per row, totals) and review before it enters the CSV pipeline. Quality: hand-labelled sheets, country-level accuracy, totals matched, rows edited, flags that caught the real errors.
+Designed, not built: the core came first. Design: [docs/BONUS-PDF-DESIGN.md](docs/BONUS-PDF-DESIGN.md). Document Intelligence gives the table, the marks and a confidence per cell; an LLM is called only for what DI cannot resolve. The output is untrusted: Domain rules and review before the CSV pipeline. Quality is measured against hand-labelled sheets (details in the link).
