@@ -5,9 +5,6 @@ public enum Stance { For, Against }
 
 public sealed record Position(Stance Stance, int Weight);
 
-/// <summary>A validation error under the name of the request field (POS-02).</summary>
-public sealed record FieldError(string Field, string Message);
-
 public enum PositionOutcome
 {
     /// <summary>The vote has no position yet and the client expected none (version 0).</summary>
