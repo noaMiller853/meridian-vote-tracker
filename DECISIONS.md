@@ -55,4 +55,4 @@ Score = 100 × (sum of matching weights) ÷ (sum of counted weights), stored wit
 Standards first: the OpenAPI document is the contract and the client is regenerated in CI; one error format (ProblemDetails); reviewed migrations only; every rule tested, with real PostgreSQL integration tests; decisions recorded here; AI-assisted code reviewed like any other.
 
 ## 7. Bonus
-Not built; the core came first. Extraction output would be untrusted input, measured against hand-checked sheets: country-level accuracy, and sums matching the printed totals.
+Designed, not built: the core came first. Design: [docs/BONUS-PDF-DESIGN.md](docs/BONUS-PDF-DESIGN.md). Document Intelligence (layout) gives the table, the marks and a confidence per cell; an LLM (Azure OpenAI structured outputs by default) is called only for what DI cannot resolve, because every row prints the country code. The output is untrusted: Domain rules (known code, membership, one mark per row, totals) and review before it enters the CSV pipeline. Quality: hand-labelled sheets, country-level accuracy, totals matched, rows edited, flags that caught the real errors.
