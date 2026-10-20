@@ -45,6 +45,27 @@ public sealed class AzureCredentialFactoryTests
             (AzureCredentialFactory.SettingFor(AzureResource.Storage), AzureCredentialFactory.SettingFor(AzureResource.KeyVault)));
     }
 
+    [Theory]
+    [InlineData("<paste the token>")]   // the placeholder from the README, pasted by mistake
+    [InlineData("not-a-jwt")]
+    [InlineData("a.b.c")]               // three parts, payload not JSON
+    [InlineData("eyJhbGciOiJub25lIn0.eyJzdWIiOiJ4In0.sig")] // JSON payload without exp
+    [InlineData("eyJh bGci.eyJ.sig")]   // a space: not a valid header value
+    public void Unreadable_tokens_are_recognised(string token)
+    {
+        Assert.False(StaticTokenCredential.TryReadExpiry(token, out _));
+        Assert.False(AzureTokenOptions.IsUsable(token));
+    }
+
+    [Fact]
+    public void A_real_shaped_token_or_no_token_is_usable()
+    {
+        Assert.True(StaticTokenCredential.TryReadExpiry(Jwt(1_900_000_000), out var expiresOn));
+        Assert.Equal(DateTimeOffset.FromUnixTimeSeconds(1_900_000_000), expiresOn);
+        Assert.True(AzureTokenOptions.IsUsable(null));
+        Assert.True(AzureTokenOptions.IsUsable(" "));
+    }
+
     [Fact]
     public void A_token_that_is_not_a_jwt_is_assumed_to_last_an_hour() =>
         Assert.InRange(StaticTokenCredential.ExpiresOn("not-a-jwt"), DateTimeOffset.UtcNow.AddMinutes(59), DateTimeOffset.UtcNow.AddMinutes(61));
@@ -74,6 +95,40 @@ public sealed class FileStoreSelectionTests(PostgresFixture fixture)
         var ex = await Assert.ThrowsAsync<OptionsValidationException>(() => TestApi.StartAsync(fixture, settings: settings));
 
         Assert.Contains(expected, ex.Message);
+    }
+
+    [Theory]
+    [InlineData("<paste the token>")]
+    [InlineData("not-a-jwt")]
+    public async Task An_unreadable_storage_token_stops_startup_naming_the_setting(string token)
+    {
+        var ex = await Assert.ThrowsAsync<OptionsValidationException>(() => TestApi.StartAsync(fixture, settings: new Dictionary<string, string>
+        {
+            ["FileStore:Provider"] = "AzureBlob",
+            ["FileStore:BlobServiceUri"] = "https://example.blob.core.windows.net",
+            ["FileStore:Container"] = "uploads",
+            ["Azure:StorageAccessToken"] = token,
+        }));
+
+        Assert.Contains("Azure:StorageAccessToken (environment variable AZURE_STORAGE_ACCESS_TOKEN) is set but is not a readable access token", ex.Message);
+        Assert.Contains("az account get-access-token --resource https://storage.azure.com/", ex.Message);
+        Assert.DoesNotContain(token, ex.Message); // the value itself is never echoed
+    }
+
+    [Fact]
+    public async Task A_readable_storage_token_starts_normally()
+    {
+        var jwt = "eyJhbGciOiJub25lIn0." + Convert.ToBase64String(Encoding.UTF8.GetBytes("""{"exp":1900000000}""")).TrimEnd('=') + ".sig";
+
+        await using var api = await TestApi.StartAsync(fixture, settings: new Dictionary<string, string>
+        {
+            ["FileStore:Provider"] = "AzureBlob",
+            ["FileStore:BlobServiceUri"] = "https://example.blob.core.windows.net",
+            ["FileStore:Container"] = "uploads",
+            ["Azure:StorageAccessToken"] = jwt,
+        });
+
+        Assert.IsType<AzureBlobFileStore>(api.Factory.Services.GetRequiredService<IFileStore>());
     }
 
     [Fact]

@@ -42,6 +42,17 @@ public static class DependencyInjection
 
         // Every Azure client authenticates through this factory (a configured token per resource, else DefaultAzureCredential).
         services.AddSingleton<AzureCredentialFactory>();
+        // A configured token that cannot be sent (for example a pasted placeholder) stops startup with the setting's name,
+        // instead of failing the first upload with a 500.
+        services.AddOptions<AzureTokenOptions>()
+            .Bind(configuration.GetSection("Azure"))
+            .Validate(o => AzureTokenOptions.IsUsable(o.StorageAccessToken),
+                AzureTokenOptions.UnreadableMessage(AzureCredentialFactory.StorageAccessTokenSetting, "AZURE_STORAGE_ACCESS_TOKEN",
+                    "https://storage.azure.com/"))
+            .Validate(o => AzureTokenOptions.IsUsable(o.KeyVaultAccessToken),
+                AzureTokenOptions.UnreadableMessage(AzureCredentialFactory.KeyVaultAccessTokenSetting, "Azure__KeyVaultAccessToken",
+                    "https://vault.azure.net"))
+            .ValidateOnStart();
 
         // Local (default) or AzureBlob; a wrong setting stops startup instead of failing the first upload.
         services.AddOptions<FileStoreOptions>()

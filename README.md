@@ -203,7 +203,7 @@ union requests, traces
    docker compose -f docker-compose.yml -f docker-compose.blob.yml up --build
    ```
 
-The token lasts about an hour and is not refreshed: after that an upload answers 503 "File store unavailable" (an expired token gives 401 in the server log, a missing data role 403). Get a new token and start again. Outside Docker (a managed identity in Azure, or `az login` on the machine), leave the token out: the API then uses `DefaultAzureCredential`. Settings: `FileStore:Provider` (`Local` or `AzureBlob`), `FileStore:BlobServiceUri`, `FileStore:Container`, `Azure:StorageAccessToken`; a wrong combination stops the API at startup with a clear message. Files are stored once per content as `{sha256}.csv`; files stored by one provider cannot be read after switching to the other.
+The token lasts about an hour and is not refreshed: after that an upload answers 503 "File store unavailable" (an expired token gives 401 in the server log, a missing data role 403). Get a new token and start again. Outside Docker (a managed identity in Azure, or `az login` on the machine), leave the token out: the API then uses `DefaultAzureCredential`. Settings: `FileStore:Provider` (`Local` or `AzureBlob`), `FileStore:BlobServiceUri`, `FileStore:Container`, `Azure:StorageAccessToken`; a wrong combination, or a token that is not a readable access token, stops the API at startup with a clear message. Files are stored once per content as `{sha256}.csv`; files stored by one provider cannot be read after switching to the other.
 
 Azure Database for PostgreSQL: the connection string is the only setting needed to point the API at it (not verified, see DECISIONS.md section 4).
 

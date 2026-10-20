@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Azure.Core;
 using Azure.Identity;
 using Microsoft.Extensions.Configuration;
@@ -41,7 +42,7 @@ public sealed class AzureCredentialFactory(IConfiguration configuration)
 /// expires (about an hour), Azure answers 401 and the API reports the file store as unavailable until it is restarted
 /// with a new token.
 /// </summary>
-public sealed class StaticTokenCredential(string token) : TokenCredential
+public sealed partial class StaticTokenCredential(string token) : TokenCredential
 {
     private readonly AccessToken _token = new(token, ExpiresOn(token));
 
@@ -51,18 +52,50 @@ public sealed class StaticTokenCredential(string token) : TokenCredential
         ValueTask.FromResult(_token);
 
     /// <summary>The <c>exp</c> claim of the JWT; one hour from now when it cannot be read.</summary>
-    public static DateTimeOffset ExpiresOn(string token)
+    public static DateTimeOffset ExpiresOn(string token) =>
+        TryReadExpiry(token, out var expiresOn) ? expiresOn : DateTimeOffset.UtcNow.AddHours(1);
+
+    /// <summary>
+    /// True when the token is a JWT this credential can send: three base64url parts (so it is a valid header value) and a
+    /// payload with an <c>exp</c> claim. A pasted placeholder such as "&lt;paste the token&gt;" is not.
+    /// </summary>
+    public static bool TryReadExpiry(string token, out DateTimeOffset expiresOn)
     {
+        expiresOn = default;
+        if (!JwtShape().IsMatch(token))
+            return false;
         try
         {
             var payload = token.Split('.')[1].Replace('-', '+').Replace('_', '/');
             payload = payload.PadRight(payload.Length + (4 - payload.Length % 4) % 4, '=');
             using var json = JsonDocument.Parse(Encoding.UTF8.GetString(Convert.FromBase64String(payload)));
-            return DateTimeOffset.FromUnixTimeSeconds(json.RootElement.GetProperty("exp").GetInt64());
+            if (!json.RootElement.TryGetProperty("exp", out var exp) || !exp.TryGetInt64(out var seconds))
+                return false;
+            expiresOn = DateTimeOffset.FromUnixTimeSeconds(seconds);
+            return true;
         }
-        catch (Exception e) when (e is IndexOutOfRangeException or FormatException or JsonException or KeyNotFoundException or InvalidOperationException)
+        catch (Exception e) when (e is FormatException or JsonException or InvalidOperationException or ArgumentOutOfRangeException)
         {
-            return DateTimeOffset.UtcNow.AddHours(1);
+            return false;
         }
     }
+
+    [GeneratedRegex("^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]*$")]
+    private static partial Regex JwtShape();
+}
+
+/// <summary>Section "Azure": the access tokens per resource, checked at startup (a wrong one stops the API).</summary>
+public sealed class AzureTokenOptions
+{
+    public string? StorageAccessToken { get; set; }
+    public string? KeyVaultAccessToken { get; set; }
+
+    /// <summary>Empty means "not set" (DefaultAzureCredential is used); a value must be a readable token.</summary>
+    public static bool IsUsable(string? token) =>
+        string.IsNullOrWhiteSpace(token) || StaticTokenCredential.TryReadExpiry(token.Trim(), out _);
+
+    public static string UnreadableMessage(string setting, string environmentVariable, string resource) =>
+        $"{setting} (environment variable {environmentVariable}) is set but is not a readable access token: expected a JWT, " +
+        $"three base64url parts with an exp claim. Paste the output of az account get-access-token --resource {resource} " +
+        "--query accessToken -o tsv, or leave it empty to use DefaultAzureCredential.";
 }
