@@ -25,7 +25,7 @@ interface Missing {
         <h2>Create snapshot</h2>
 
         <label for="name">Name</label>
-        <input id="name" type="text" [(ngModel)]="name" [class.invalid]="fieldError('name')" placeholder="e.g. 2024-Q1 (after corrections)" />
+        <input id="name" type="text" [ngModel]="name()" (ngModelChange)="name.set($event)" [class.invalid]="fieldError('name')" placeholder="e.g. 2024-Q1 (after corrections)" />
         @if (fieldError('name'); as m) {
           <div class="field-error">{{ m }}</div>
         }
@@ -86,7 +86,7 @@ interface Missing {
               <button class="btn btn-small" type="button" (click)="useOthersAsList()" [disabled]="selected() === missing().length">Select the other {{ selected() - missing().length }} as a list</button>
             </div>
             <label style="display: flex; gap: 6px; align-items: center; font-weight: 400">
-              <input type="checkbox" [(ngModel)]="excludeConfirmed" /> Create it without them. They are listed as excluded, with the reason.
+              <input type="checkbox" [ngModel]="excludeConfirmed()" (ngModelChange)="excludeConfirmed.set($event)" /> Create it without them. They are listed as excluded, with the reason.
             </label>
           </div>
         }
@@ -161,18 +161,21 @@ export class Snapshots {
   protected readonly busy = signal(false);
 
   protected readonly mode = signal<Mode>('range');
-  protected name = '';
+  // Signals, not plain fields: canCreate is a computed() and only re-evaluates when a signal it reads changes.
+  protected readonly name = signal('');
   protected dateFrom = '';
   protected dateTo = '';
   protected session: number | null = null;
   protected idsText = '';
-  protected excludeConfirmed = false;
+  protected readonly excludeConfirmed = signal(false);
 
   protected readonly selected = signal(0);
   protected readonly missing = signal<Missing[]>([]);
   private readonly selectedWithPosition = signal<string[]>([]);
   protected readonly fieldError = (f: string) => this.error()?.fieldError(f) ?? null;
-  protected readonly canCreate = computed(() => this.name.trim().length > 0 && this.selected() > 0 && (this.missing().length === 0 || this.excludeConfirmed));
+  protected readonly canCreate = computed(
+    () => this.name().trim().length > 0 && this.selected() > 0 && (this.missing().length === 0 || this.excludeConfirmed()),
+  );
 
   protected readonly time = dateTime;
   protected readonly tone = snapshotTone;
@@ -199,7 +202,7 @@ export class Snapshots {
   private async prefill(id: number) {
     try {
       const d = await api.snapshots.get(id);
-      this.name = `${d.snapshot.name} (current data)`;
+      this.name.set(`${d.snapshot.name} (current data)`);
       const s = d.selection;
       if (s.assemblyVoteIds.length > 0) {
         this.mode.set('list');
@@ -212,7 +215,7 @@ export class Snapshots {
         this.dateFrom = s.dateFrom ?? '';
         this.dateTo = s.dateTo ?? '';
       }
-      this.excludeConfirmed = d.excludeVotesWithoutPosition;
+      this.excludeConfirmed.set(d.excludeVotesWithoutPosition);
       await this.compute();
     } catch (e) {
       this.error.set(asApiError(e));
@@ -266,7 +269,7 @@ export class Snapshots {
   protected useOthersAsList() {
     this.idsText = this.selectedWithPosition().join('\n');
     this.mode.set('list');
-    this.excludeConfirmed = false;
+    this.excludeConfirmed.set(false);
     void this.compute();
   }
 
@@ -277,15 +280,15 @@ export class Snapshots {
     const mode = this.mode();
     try {
       const created = await api.snapshots.create({
-        name: this.name.trim(),
+        name: this.name().trim(),
         dateFrom: mode === 'range' ? this.dateFrom || undefined : undefined,
         dateTo: mode === 'range' ? this.dateTo || undefined : undefined,
         session: mode === 'session' ? (this.session ?? undefined) : undefined,
         assemblyVoteIds: mode === 'list' ? parseIds(this.idsText) : undefined,
-        excludeVotesWithoutPosition: this.excludeConfirmed,
+        excludeVotesWithoutPosition: this.excludeConfirmed(),
       });
       this.started.set(`Snapshot ${created.snapshotId} started with ${created.selectedVotes} votes. It is calculated in the background.`);
-      this.name = '';
+      this.name.set('');
       await this.poller.start();
     } catch (e) {
       const err = asApiError(e);
