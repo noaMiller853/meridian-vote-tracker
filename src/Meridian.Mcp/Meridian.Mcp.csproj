@@ -6,7 +6,10 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
-  <!-- The MCP package is added with:  dotnet add src/Meridian.Mcp package ModelContextProtocol.AspNetCore --prerelease
-       (the first install is run on a machine with NuGet access; pin the version it writes here). -->
+  <ItemGroup>
+    <!-- Floating version (latest, previews included) so the first build works. After a successful build, replace it with the
+         exact version that was restored (see obj/project.assets.json or the build log) to make builds repeatable. -->
+    <PackageReference Include="ModelContextProtocol.AspNetCore" Version="*-*" />
+  </ItemGroup>
 
 </Project>
