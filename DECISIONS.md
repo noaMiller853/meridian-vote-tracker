@@ -12,7 +12,7 @@ Detail behind every rule: [docs/DECISIONS-DETAIL.md](docs/DECISIONS-DETAIL.md). 
 - **One transaction per import:** never half-imported; a late failure means uploading again. Historic file (962,171 lines): about 70-90 s, peak memory about 350 MB.
 - **Progress:** a table plus polling, not SignalR; survives a refresh.
 - **Front end:** Angular, client generated from the OpenAPI document, one origin (no CORS); errors beside the field, 409 as a structured message; Appendix B not binding.
-- **Users:** preset users via `X-User` (section 3), roles enforced in the API (only Admin sets positions and publishes); `X-Correlation-Id` follows a request into logs, jobs and audit.
+- **Users:** preset users via `X-User` (section 3), roles enforced in the API (only Admin sets positions and publishes); `X-Correlation-Id` follows a request into logs, jobs and audit. For hosts that others can reach there is a `Jwt` mode (password sign-in, signed token, role read from the database); Production refuses to start in the password-less header mode.
 
 ## 2. Scoring rules (SNP)
 Score = 100 × (sum of matching weights) ÷ (sum of counted weights), stored with 6 decimals, shown with one.
@@ -38,7 +38,7 @@ Score = 100 × (sum of matching weights) ÷ (sum of counted weights), stored wit
 - **Not used, on purpose:** Cosmos DB (relational integrity, joins over a million rows). Document Intelligence, Azure OpenAI and Foundry only serve the PDF bonus: designed ([docs/BONUS-PDF-DESIGN.md](docs/BONUS-PDF-DESIGN.md)), not built.
 
 ## 5. What I would change before production
-- Real authentication (Entra ID, roles as claims) instead of the password-less `X-User`.
+- Single sign-on (Entra ID) and per-user password hashes in the database, instead of the passwords in settings behind the `Jwt` mode (section 1); refresh tokens and lockout.
 - HTTPS; an exact CORS origin if the front end moves; no user names in the 401.
 - Large CHECK constraints added `NOT VALID`, then validated.
 - One timestamp clock, the database's (two today).

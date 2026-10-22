@@ -172,6 +172,22 @@ Line numbers in reports are lines in the file (the header is line 1). Recommende
 
 Uploaded files are kept in `FileStore:LocalRoot` (Development: `data/uploads` at the repository root, git-ignored), named by their sha256. Import settings: `Imports:PollSeconds`, `Imports:ProgressIntervalMs`, `Imports:CommandTimeoutSeconds`; the same three under `Snapshots:` for the snapshot worker. A snapshot of the full history takes about 7 s.
 
+## Sign-in modes, MCP server and Render
+**Two ways to identify the user** (`Auth__Mode`):
+- `Header` (default; development, tests, local compose): the user switcher sends `X-User`. No password, as the assignment allows.
+- `Jwt` (anything other people can reach): the user signs in at `POST /api/auth/login` with a password and sends the returned token as `Authorization: Bearer ...`. The role is read from the database on every request. The API **refuses to start in Production** unless `Auth__Mode=Jwt`, with `Auth__JwtKey` (32+ random characters) and a password (12+ characters) per user: `Auth__Passwords__Dana`, `Auth__Passwords__Omar`, `Auth__Passwords__Lena`. A user without a password cannot sign in. Sign-in attempts are limited per address.
+
+Try it locally:
+```
+$env:Auth__Mode = 'Jwt'; $env:Auth__JwtKey = '<32+ random characters>'; $env:Auth__Passwords__Dana = '<12+ characters>'
+dotnet run --project src/Meridian.Api
+```
+The web client asks `GET /api/auth/mode` and shows a sign-in form in `Jwt` mode and the user switcher in `Header` mode.
+
+**MCP server** (`src/Meridian.Mcp`, lets Claude read imports, conflicts, votes and snapshots and decide conflicts as the Analyst account; no Admin actions, no file upload). First time only: `dotnet add src/Meridian.Mcp package ModelContextProtocol.AspNetCore --prerelease` and `dotnet sln add src/Meridian.Mcp`. Locally: put `MCP_API_KEY=<random 24+ characters>` in `.env` and run `docker compose --profile mcp up --build`; the endpoint is `http://localhost:8090/mcp` and clients send `Authorization: Bearer <MCP_API_KEY>`. For Claude Code: `claude mcp add --transport http meridian http://localhost:8090/mcp --header "Authorization: Bearer <MCP_API_KEY>"`.
+
+**Render** (`render.yaml`): New + > Blueprint > this repository. It creates the PostgreSQL database and three services (`meridian-web`, `meridian-api`, `meridian-mcp`) in one region, runs the API in Production with `Jwt`, and lets Render generate the key and the passwords (dashboard > the `meridian-secrets` group; you can replace the passwords with your own, 12+ characters). The API accepts the `postgres://` URL Render provides. Open the URL of `meridian-web` and sign in as Dana, Omar or Lena. Free plans sleep when idle, the free database expires after 30 days, and uploaded files are lost on every deploy (no persistent disk): use a paid plan with a disk, or Blob Storage, for real use.
+
 ## Tests
 `dotnet test`. Integration tests start a real PostgreSQL through Testcontainers, so Docker must be running. The test that streams the 100 MB historic file looks for `assembly_historic.csv` in `MERIDIAN_DATA_DIR`, then in `data/`, then next to the repository folder, and is skipped when it is not found.
 

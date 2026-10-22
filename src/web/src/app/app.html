@@ -1,15 +1,45 @@
 <header class="topbar">
   <div class="brand">Meridian Vote Tracker <span>Northwind Policy Institute</span></div>
-  <label class="switch">
-    <span>Switch user</span>
-    <select [value]="user" (change)="switchUser($any($event.target).value)" aria-label="Switch user">
-      @for (u of users; track u.name) {
-        <option [value]="u.name" [selected]="u.name === user">{{ u.name }} · {{ u.role }}</option>
-      }
-    </select>
-  </label>
+  @if (mode() === 'Header') {
+    <label class="switch">
+      <span>Switch user</span>
+      <select [value]="user" (change)="switchUser($any($event.target).value)" aria-label="Switch user">
+        @for (u of users; track u.name) {
+          <option [value]="u.name" [selected]="u.name === user">{{ u.name }} · {{ u.role }}</option>
+        }
+      </select>
+    </label>
+  } @else if (mode() === 'Jwt' && !needsSignIn()) {
+    <div class="switch">
+      <span>Signed in as <b>{{ user }}</b> · {{ role }}</span>
+      <button type="button" class="btn btn-small" (click)="signOut()">Sign out</button>
+    </div>
+  }
 </header>
 
+@if (mode() === 'loading') {
+  <main class="content"><p class="muted">Loading…</p></main>
+} @else if (needsSignIn()) {
+  <main class="content">
+    <form class="card" style="max-width: 360px; margin: 48px auto" (submit)="submitSignIn($event)">
+      <h2>Sign in</h2>
+      <label for="userName">User name</label>
+      <input id="userName" name="userName" autocomplete="username" [value]="userName()" (input)="userName.set($any($event.target).value)" />
+      @if (signInError()?.field === 'userName') {
+        <div class="field-error">{{ signInError()!.message }}</div>
+      }
+      <label for="password" class="mt">Password</label>
+      <input id="password" name="password" type="password" autocomplete="current-password" [value]="password()" (input)="password.set($any($event.target).value)" />
+      @if (signInError()?.field === 'password') {
+        <div class="field-error">{{ signInError()!.message }}</div>
+      }
+      @if (signInError() && !signInError()!.field) {
+        <div class="alert alert-red mt">{{ signInError()!.message }}</div>
+      }
+      <button type="submit" class="btn btn-primary mt" [disabled]="signingIn()">Sign in</button>
+    </form>
+  </main>
+} @else {
 <div class="shell">
   <nav class="side">
     <a routerLink="/imports" routerLinkActive="on">Imports</a>
@@ -26,3 +56,4 @@
     <router-outlet />
   </main>
 </div>
+}

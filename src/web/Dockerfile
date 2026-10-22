@@ -6,5 +6,6 @@ COPY . .
 RUN npx ng build
 
 FROM nginx:alpine
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+ENV PORT=80 API_UPSTREAM=http://api:8080
+COPY nginx.conf /etc/nginx/templates/default.conf.template
 COPY --from=build /app/dist/web/browser /usr/share/nginx/html

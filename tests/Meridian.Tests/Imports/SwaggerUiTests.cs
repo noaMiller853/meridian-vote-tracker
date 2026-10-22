@@ -37,7 +37,13 @@ public sealed class SwaggerUiTests(PostgresFixture fixture)
     [InlineData("Production")]
     public async Task Other_environments_serve_neither_the_ui_nor_the_document(string environment)
     {
-        await using var api = await TestApi.StartAsync(fixture, environment: environment);
+        var jwt = new Dictionary<string, string>
+        {
+            ["Auth:Mode"] = "Jwt",
+            ["Auth:JwtKey"] = new string('k', 48),
+            ["Auth:Passwords:Dana"] = "a-long-test-password",
+        };
+        await using var api = await TestApi.StartAsync(fixture, environment: environment, settings: jwt);
         using var client = api.Client(user: null);
 
         Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/swagger/index.html")).StatusCode);

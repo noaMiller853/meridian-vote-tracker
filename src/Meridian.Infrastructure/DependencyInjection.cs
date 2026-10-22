@@ -26,6 +26,9 @@ public static class DependencyInjection
                 "'dotnet user-secrets set \"ConnectionStrings:Default\" \"...\"' in src/Meridian.Api, " +
                 "or with the ConnectionStrings__Default environment variable.");
 
+        // Render and similar platforms hand out a postgres:// URL; Npgsql wants key=value pairs.
+        connectionString = ConnectionStringNormalizer.Normalize(connectionString);
+
         // Raw SQL of the import worker (advisory lock, claim, progress, COPY) uses this data source. EF gets the connection
         // string instead: a data source instance is part of EF's internal service-provider key, so one per host would
         // make EF build a new internal provider for every host (seen with many test hosts in one process).

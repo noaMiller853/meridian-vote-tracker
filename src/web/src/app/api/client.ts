@@ -39,7 +39,39 @@ export const USERS = [
   { name: 'Lena', role: 'Admin' },
 ] as const;
 
+/** The signed-in user of the Jwt mode (a password sign-in, kept for the browser tab only). */
+export interface Session {
+  token: string;
+  name: string;
+  role: string;
+  expiresAt: string;
+}
+
+export const SESSION_KEY = 'meridian.session';
+
+export function getSession(): Session | null {
+  try {
+    const raw = sessionStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    const session = JSON.parse(raw) as Session;
+    return Date.parse(session.expiresAt) > Date.now() ? session : null;
+  } catch {
+    return null;
+  }
+}
+
+export function setSession(session: Session | null): void {
+  try {
+    if (session) sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
+    else sessionStorage.removeItem(SESSION_KEY);
+  } catch {
+    /* storage can be unavailable */
+  }
+}
+
 export function currentUserName(): string {
+  const session = getSession();
+  if (session) return session.name;
   try {
     const stored = localStorage.getItem(USER_KEY);
     if (stored && USERS.some((u) => u.name === stored)) return stored;
@@ -50,6 +82,8 @@ export function currentUserName(): string {
 }
 
 export function currentRole(): string {
+  const session = getSession();
+  if (session) return session.role;
   return USERS.find((u) => u.name === currentUserName())?.role ?? 'Analyst';
 }
 
@@ -66,11 +100,22 @@ function correlationId(): string {
 export const client = createClient<paths>({ baseUrl: '' });
 
 // Every request names the acting user and carries a correlation id that follows it into the API logs (section 9).
+// Signed in (Jwt mode): the Bearer token names the user. Otherwise the user switcher's X-User header does (spec section 3).
 client.use({
   onRequest({ request }) {
-    request.headers.set('X-User', currentUserName());
+    const session = getSession();
+    if (session) request.headers.set('Authorization', `Bearer ${session.token}`);
+    else request.headers.set('X-User', currentUserName());
     request.headers.set('X-Correlation-Id', correlationId());
     return request;
+  },
+  onResponse({ response }) {
+    // An expired or refused token: forget it and show the sign-in form again.
+    if (response.status === 401 && getSession()) {
+      setSession(null);
+      location.reload();
+    }
+    return response;
   },
 });
 

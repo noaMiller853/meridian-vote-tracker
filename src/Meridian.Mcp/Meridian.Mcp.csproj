@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <!-- The MCP package is added with:  dotnet add src/Meridian.Mcp package ModelContextProtocol.AspNetCore --prerelease
+       (the first install is run on a machine with NuGet access; pin the version it writes here). -->
+
+</Project>

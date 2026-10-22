@@ -2,6 +2,7 @@ using Meridian.Infrastructure.Persistence;
 using Meridian.Infrastructure.Startup;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace Meridian.Api.Http;
 
@@ -27,23 +28,47 @@ public sealed class CurrentUser
 }
 
 /// <summary>
-/// Simplified identification (spec section 3): the user switcher sends X-User with the user name. Every /api request
-/// must name a known user; the internal 'system' user cannot be used. Roles are then checked per endpoint.
+/// Identification of the caller. Header mode (spec section 3, simplified): the user switcher sends X-User with the user
+/// name. Jwt mode: the Bearer token from POST /api/auth/login names the user. In both modes every /api request (except
+/// /api/auth/*) must name a known user, the internal 'system' user cannot be used, and the role always comes from the
+/// database. Roles are then checked per endpoint.
 /// </summary>
 public sealed class CurrentUserMiddleware(RequestDelegate next, ILogger<CurrentUserMiddleware> logger)
 {
     public const string Header = "X-User";
 
-    public async Task InvokeAsync(HttpContext context, MeridianDbContext db, CurrentUser current, IProblemDetailsService problems)
+    public async Task InvokeAsync(HttpContext context, MeridianDbContext db, CurrentUser current, IProblemDetailsService problems,
+        IOptions<AuthOptions> authOptions, TokenService tokens)
     {
-        if (!context.Request.Path.StartsWithSegments("/api"))
+        var path = context.Request.Path;
+        if (!path.StartsWithSegments("/api") || path.StartsWithSegments("/api/auth"))
         {
             await next(context);
             return;
         }
 
-        var name = context.Request.Headers[Header].ToString();
+        var jwt = authOptions.Value.IsJwt;
+        string name;
+        if (jwt)
+        {
+            var authorization = context.Request.Headers.Authorization.ToString();
+            var token = authorization.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) ? authorization["Bearer ".Length..].Trim() : "";
+            name = await tokens.ReadUserNameAsync(token) ?? "";
+        }
+        else
+        {
+            name = context.Request.Headers[Header].ToString();
+        }
         var user = name.Length == 0 ? null : await db.Users.AsNoTracking().SingleOrDefaultAsync(u => u.Name == name, context.RequestAborted);
+
+        if (user is null && jwt)
+        {
+            // Nothing about the known users is revealed here.
+            context.Response.Headers.WWWAuthenticate = "Bearer";
+            await WriteProblemAsync(context, problems, StatusCodes.Status401Unauthorized, "Authentication required",
+                "Send a valid Bearer token from POST /api/auth/login.");
+            return;
+        }
 
         if (user is null)
         {

@@ -27,6 +27,20 @@ services:
     ports:
       - "4200:80"
 
+  # Optional MCP server (lets Claude use the API): docker compose --profile mcp up --build
+  mcp:
+    profiles: ["mcp"]
+    build:
+      context: .
+      dockerfile: src/Meridian.Mcp/Dockerfile
+    depends_on: [api]
+    environment:
+      Meridian__ApiUrl: http://api:8080
+      Meridian__UserName: Dana
+      Mcp__ApiKey: ${MCP_API_KEY:-}   # required when this profile is used: a random value of 24+ characters
+    ports:
+      - "8090:8080"
+
   db:
     image: postgres:17
     container_name: meridian-db
